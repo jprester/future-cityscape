@@ -3,6 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import { useControls, folder } from "leva";
 import { Color, type AmbientLight, type DirectionalLight, FogExp2 } from "three";
 import { ENVIRONMENT_NIGHT } from "../../config/environments";
+import { useGameStore } from "../../context/GameContext";
+import type { VisibilitySettings } from "../../types/settings";
 
 /**
  * Dev-only Leva controls for live scene tuning (lighting, environment, fog).
@@ -21,6 +23,45 @@ export default function DevSceneControls() {
   const ambientRef = useRef<AmbientLight | null>(null);
   const sunRef = useRef<DirectionalLight | null>(null);
   const tmpColor = useRef(new Color());
+
+  // Visibility toggles — drive the existing settings.visibility flags so each
+  // object type can be switched off live (handy for attributing draw calls).
+  const { settings, setSettings } = useGameStore();
+  const setVis = (key: keyof VisibilitySettings) => (value: boolean) =>
+    setSettings((s) => ({
+      ...s,
+      visibility: { ...s.visibility, [key]: value },
+    }));
+
+  useControls({
+    Visibility: folder(
+      {
+        buildings: {
+          value: settings.visibility.buildings,
+          onChange: setVis("buildings"),
+        },
+        ads: { value: settings.visibility.ads, onChange: setVis("ads") },
+        smoke: { value: settings.visibility.smoke, onChange: setVis("smoke") },
+        spotlights: {
+          value: settings.visibility.spotlights,
+          onChange: setVis("spotlights"),
+        },
+        toppers: {
+          value: settings.visibility.toppers,
+          onChange: setVis("toppers"),
+        },
+        ground: {
+          value: settings.visibility.ground,
+          onChange: setVis("ground"),
+        },
+        storefronts: {
+          value: settings.visibility.storefronts,
+          onChange: setVis("storefronts"),
+        },
+      },
+      { collapsed: true },
+    ),
+  });
 
   const values = useControls({
     Lighting: folder({

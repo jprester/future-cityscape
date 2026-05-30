@@ -8,9 +8,7 @@ import {
 } from "three";
 import type { Texture } from "three";
 import { useFrame } from "@react-three/fiber";
-import { MeshReflectorMaterial } from "@react-three/drei";
 import { useGameStore } from "../../context/GameContext";
-import type { QualityLevel } from "../../types/settings";
 import { generateLayout, loadLayoutFromURL } from "../../config/cityLayouts";
 import { CITY_BLOCK_SIZE, ROAD_WIDTH } from "../../config/world";
 import { unitsToMeters, UNITS_PER_METER } from "../../config/scale";
@@ -269,7 +267,6 @@ export function FiniteCitySystem() {
         layout={layout}
         game={gameRef.current}
         visibility={visibility}
-        qualityLevel={settings.qualityLevel}
       />
       {visibility.buildings && (
         <InstancedBuildings buildings={buildings} game={gameRef.current} />
@@ -384,23 +381,16 @@ function FiniteCityGround({
   layout,
   game,
   visibility,
-  qualityLevel,
 }: {
   layout: FiniteCityLayout;
   game: GameRuntime | null;
   visibility: { ground: boolean; storefronts: boolean };
-  qualityLevel: QualityLevel;
 }) {
-  // Wet-street reflections are GPU-heavy (an extra scene pass), so they're
-  // gated to medium/high quality; low quality keeps the cheap tiled ground.
-  const reflectionsEnabled = visibility.ground && qualityLevel !== "low";
-
-  // A single reflector plane covering the whole city — never one per tile, as
-  // each MeshReflectorMaterial drives its own reflection render. The ground
-  // texture is cloned and tiled across it so we keep the asphalt detail while
-  // adding reflections (drop-in point for proper road textures later).
-  const reflectivePlane = useMemo(() => {
-    if (!reflectionsEnabled || !game?.assets?.loaded) return null;
+  // A single ground plane covering the whole city (one draw call), with the
+  // ground texture cloned and tiled across it to keep the asphalt detail.
+  // (Drop-in point for proper road textures later.)
+  const groundPlane = useMemo(() => {
+    if (!visibility.ground || !game?.assets?.loaded) return null;
     const { minX, maxX, minZ, maxZ } = layout.bounds;
 
     // Original ground tiles were one cell (block+road) centered on each block,
@@ -447,30 +437,15 @@ function FiniteCityGround({
       map: cloneTiled(game.assets.getTexture("ground")),
       emissiveMap: cloneTiled(game.assets.getTexture("ground_em")),
     };
-  }, [reflectionsEnabled, layout.bounds, game?.assets, game?.assets?.loaded]);
+  }, [visibility.ground, layout.bounds, game?.assets, game?.assets?.loaded]);
 
   // Dispose the cloned textures when the plane is rebuilt/unmounted.
   useEffect(() => {
     return () => {
-      reflectivePlane?.map?.dispose();
-      reflectivePlane?.emissiveMap?.dispose();
+      groundPlane?.map?.dispose();
+      groundPlane?.emissiveMap?.dispose();
     };
-  }, [reflectivePlane]);
-
-  const groundMeshes = useMemo(() => {
-    if (!game?.assets?.loaded) return [];
-    // Skip the tiled ground when the reflective plane replaces it.
-    if (!visibility.ground || reflectionsEnabled) return [];
-
-    return layout.groundTiles.map((tile) => {
-      const geometry = game.assets!.getModel("ground");
-      const material = game.assets!.getMaterial("ground");
-      const mesh = new Mesh(geometry, material);
-      mesh.position.set(tile.x, 0, tile.z);
-      mesh.rotation.x = -Math.PI / 2;
-      return mesh;
-    });
-  }, [layout, game?.assets?.loaded, visibility.ground, reflectionsEnabled]);
+  }, [groundPlane]);
 
   const storefrontMeshes = useMemo(() => {
     if (!game?.assets?.loaded) return [];
@@ -487,39 +462,25 @@ function FiniteCityGround({
 
   return (
     <group>
-      {reflectivePlane && (
+      {groundPlane && (
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[reflectivePlane.centerX, 0, reflectivePlane.centerZ]}>
-          <planeGeometry
-            args={[reflectivePlane.width, reflectivePlane.depth]}
-          />
-          <MeshReflectorMaterial
-            resolution={qualityLevel === "high" ? 512 : 256}
-            blur={[300, 100]}
-            mixBlur={1}
-            // Reflection MULTIPLIES the lit base color, so the ground texture
-            // (map) provides the asphalt detail the reflection modulates. A
-            // high mixStrength compensates for the dark night lighting; the
-            // emissive map keeps the subtle blue ground glow.
-            mixStrength={20}
-            mirror={0.7}
-            depthScale={1}
-            minDepthThreshold={0.4}
-            maxDepthThreshold={1.2}
+          position={[groundPlane.centerX, 0, groundPlane.centerZ]}
+          receiveShadow>
+          <planeGeometry args={[groundPlane.width, groundPlane.depth]} />
+          {/* Matte asphalt: the tiled ground texture provides the detail and
+              the emissive map keeps the subtle blue ground glow. */}
+          <meshStandardMaterial
             roughness={0.8}
             metalness={0}
             color="#3a3a48"
-            map={reflectivePlane.map ?? undefined}
-            emissiveMap={reflectivePlane.emissiveMap ?? undefined}
+            map={groundPlane.map ?? undefined}
+            emissiveMap={groundPlane.emissiveMap ?? undefined}
             emissive="#0090ff"
             emissiveIntensity={0.2}
           />
         </mesh>
       )}
-      {groundMeshes.map((mesh) => (
-        <primitive key={mesh.uuid} object={mesh} receiveShadow />
-      ))}
       {storefrontMeshes.map((mesh) => (
         <primitive key={mesh.uuid} object={mesh} />
       ))}
