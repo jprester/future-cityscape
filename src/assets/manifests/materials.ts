@@ -57,53 +57,6 @@ export function createMaterialFactories(): MaterialFactoryMap {
       shininess: 0,
     });
 
-  // Spinner (player car)
-  factories["spinner_interior"] = (getTexture) =>
-    new MeshStandardMaterial({
-      map: getTexture("spinner_interior"),
-      normalMap: getTexture("spinner_interior_norm"),
-      aoMap: getTexture("spinner_interior_ao"),
-      aoMapIntensity: 1,
-      roughness: 0.6,
-      metalness: 0,
-      emissive: 0xffffff,
-      emissiveMap: getTexture("spinner_interior_em"),
-      emissiveIntensity: 0.1, // Legacy: overwritten by preset
-    });
-
-  factories["spinner_exterior"] = (getTexture) =>
-    new MeshPhongMaterial({
-      map: getTexture("spinner_exterior"),
-      shininess: 0,
-    });
-
-  factories["spinner_windows_advanced"] = (getTexture) =>
-    new MeshPhysicalMaterial({
-      color: 0xffffff,
-      transparent: false,
-      opacity: 1,
-      roughness: 0.5,
-      roughnessMap: getTexture("spinner_windows_rough"),
-      metalness: 0,
-      reflectivity: 1,
-      transmission: 1,
-      transmissionMap: getTexture("spinner_windows_trans"),
-      thickness: 0.01,
-      normalMap: getTexture("spinner_windows_norm"),
-    });
-
-  factories["spinner_windows_simple"] = (getTexture) =>
-    new MeshStandardMaterial({
-      color: 0x808080,
-      transparent: true,
-      opacity: 0.1,
-      envMap: getTexture("env_night_windshield"),
-      roughness: 0,
-      metalness: 1,
-      normalMap: getTexture("spinner_windows_norm"),
-      blending: AdditiveBlending,
-    });
-
   // Traffic cars
   factories["cars"] = (getTexture) =>
     new MeshPhongMaterial({

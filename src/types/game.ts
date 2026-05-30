@@ -16,7 +16,13 @@ import type {
   QualityLevel,
   VisibilitySettings,
 } from "./settings";
-import type { TerminalApi } from "../ui/initTerminal";
+
+/**
+ * Minimal terminal contract. The legacy boot terminal was removed, so the
+ * runtime now always runs with `terminal: null` (Game.js guards every call).
+ * Kept as an opt-in seam in case a debug console is reintroduced.
+ */
+export type TerminalApi = Record<string, (...args: unknown[]) => unknown>;
 
 export type Vector3Like = {
   x: number;
@@ -31,11 +37,9 @@ export type RotationLike = {
 };
 
 export type RuntimeSettings = {
-  mode: string;
   worldSeed: number;
   music: boolean | number;
   soundFx: boolean | number;
-  windshieldShader: string;
   renderScaling: number;
   visualPreset?: string;
   qualityLevel?: QualityLevel;
@@ -56,12 +60,7 @@ export type RuntimePlayer = {
   camera: PerspectiveCamera;
   body: Object3D;
   camera_target?: Object3D;
-  carPose?: Object3D;
   soundWind?: ThreeAudio;
-  soundStress?: ThreeAudio;
-  soundChimeUp?: ThreeAudio;
-  soundChimeDown?: ThreeAudio;
-  soundCrash?: ThreeAudio;
   soundCityAmbient?: ThreeAudio;
 };
 

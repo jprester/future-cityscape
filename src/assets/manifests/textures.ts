@@ -40,61 +40,10 @@ export function createTextureManifest(anisotropy: number): TextureManifest {
         magFilter: LinearFilter,
       },
     },
-    env_night_windshield: {
-      path: "textures/environment/environment_night_windshield.jpg",
-      options: {
-        mapping: EquirectangularReflectionMapping,
-        magFilter: LinearFilter,
-      },
-    },
 
     // Ground
     ground: { path: "textures/ground/ground.jpg" },
     ground_em: { path: "textures/ground/ground_em.jpg" },
-
-    // Spinner (player car)
-    spinner_interior: {
-      path: "textures/cars/0QuazDeckardCarLowpoly_interior_BaseColor.png",
-    },
-    spinner_interior_norm: {
-      path: "textures/cars/0QuazDeckardCarLowpoly_interior_Normal.png",
-    },
-    spinner_interior_em: {
-      path: "textures/cars/0QuazDeckardCarLowpoly_interior_Emissive.png",
-    },
-    spinner_interior_ao: {
-      path: "textures/cars/0QuazDeckardCarLowpoly_interior_AmbientOcclusion.png",
-    },
-    spinner_exterior: {
-      path: "textures/cars/0QuazDeckardCarLowpoly_car_BaseColor.png",
-    },
-    spinner_windows_norm: {
-      path: "textures/cars/rain_normal_1024.jpg",
-      options: {
-        wrapS: RepeatWrapping,
-        wrapT: RepeatWrapping,
-        repeatX: 2.5,
-        repeatY: 2.5,
-      },
-    },
-    spinner_windows_rough: {
-      path: "textures/cars/smudges2_1024.jpg",
-      options: {
-        wrapS: RepeatWrapping,
-        wrapT: RepeatWrapping,
-        repeatX: 2.5,
-        repeatY: 2.5,
-      },
-    },
-    spinner_windows_trans: {
-      path: "textures/cars/smudges_inverted_1024.jpg",
-      options: {
-        wrapS: RepeatWrapping,
-        wrapT: RepeatWrapping,
-        repeatX: 2.5,
-        repeatY: 2.5,
-      },
-    },
 
     // Traffic cars
     cars: { path: "textures/cars/cars.jpg" },

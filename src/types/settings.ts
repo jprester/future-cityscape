@@ -13,19 +13,16 @@ export type VisibilitySettings = {
   spotlights: boolean;
   toppers: boolean;
   trafficCars: boolean;
-  playerCar: boolean;
   ground: boolean;
   storefronts: boolean;
 };
 
 export type GameSettings = {
-  mode: string;
   /** Filename in public/layouts/ to load instead of generating. e.g. "my_city.json" */
   finiteLayout?: string;
   worldSeed: number;
   music: boolean;
   soundFx: boolean;
-  windshieldShader: string;
   renderScaling: number;
   visualPreset: string;
   qualityLevel: QualityLevel;

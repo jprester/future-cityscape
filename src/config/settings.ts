@@ -22,7 +22,6 @@ export const DEFAULT_VISIBILITY: VisibilitySettings = {
   spotlights: true,
   toppers: true,
   trafficCars: true,
-  playerCar: true,
   ground: true,
   storefronts: true,
 };
@@ -31,11 +30,9 @@ export const DEFAULT_VISIBILITY: VisibilitySettings = {
  * Default game settings used on initial load
  */
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
-  mode: "freeroam",
   worldSeed: CURATED_WORLD_SEEDS[0],
   music: false,
   soundFx: true,
-  windshieldShader: "simple",
   renderScaling: 1.0,
   visualPreset: "default",
   qualityLevel: "medium" as QualityLevel,

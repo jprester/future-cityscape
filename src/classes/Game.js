@@ -3,7 +3,6 @@ import { BufferGeometry, Mesh } from "three";
 import { LegacyAssetManager as AssetManager } from "../assets";
 import { CITY_BLOCK_SIZE, ROAD_WIDTH, getEnvironment } from "../config";
 import { Player } from "./Player.js";
-import { PlayerCar } from "./PlayerCar.js";
 
 import { Radio } from "./Radio.js";
 
@@ -21,7 +20,6 @@ class Game {
     this.settingsOverrides = options.settings ? { ...options.settings } : {};
     this.terminal = options.terminal || null;
     this.onAssetsLoaded = options.onAssetsLoaded || null;
-    this.onCrashChange = options.onCrashChange || null;
 
     this.environment = getEnvironment("night");
 
@@ -93,17 +91,13 @@ class Game {
 
     // defaults
     this.settings = {
-      mode: "drive",
       worldSeed: 9746,
       music: true,
       soundFx: true,
-      windshieldShader: "simple",
       renderScaling: 1.0,
     };
 
     const overrides = this.settingsOverrides || {};
-    if (Object.prototype.hasOwnProperty.call(overrides, "mode"))
-      this.settings.mode = overrides.mode;
     if (Object.prototype.hasOwnProperty.call(overrides, "worldSeed"))
       this.settings.worldSeed = overrides.worldSeed;
     if (Object.prototype.hasOwnProperty.call(overrides, "music"))
@@ -112,8 +106,6 @@ class Game {
       this.settings.soundFx = overrides.soundFx;
     if (Object.prototype.hasOwnProperty.call(overrides, "renderScaling"))
       this.settings.renderScaling = parseFloat(overrides.renderScaling);
-    if (Object.prototype.hasOwnProperty.call(overrides, "windshieldShader"))
-      this.settings.windshieldShader = overrides.windshieldShader;
 
     console.log("Game: World seed: " + this.settings.worldSeed);
 
@@ -129,23 +121,13 @@ class Game {
       throw new Error("Game requires a controller instance");
     }
 
-    if (this.settings.mode == "drive") {
-      this.player = new PlayerCar({
-        controller: this.playerController,
-        game: this,
-        camera: this.options.camera,
-        x: -this.roadWidth / 2,
-        z: 0,
-      });
-    } else {
-      this.player = new Player({
-        controller: this.playerController,
-        game: this,
-        camera: this.options.camera,
-        x: 0,
-        z: 0,
-      });
-    }
+    this.player = new Player({
+      controller: this.playerController,
+      game: this,
+      camera: this.options.camera,
+      x: 0,
+      z: 0,
+    });
 
     // radio
 

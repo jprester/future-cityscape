@@ -179,7 +179,6 @@ export const BASE_EMISSIVE_INTENSITIES: Record<
   // Ambient
   ground: { category: "ambient", base: 0.2 },
   cars: { category: "ambient", base: 1.0 },
-  spinner_interior: { category: "ambient", base: 0.5 },
   // Smoke
   smoke_01: { category: "smoke", base: 0.3 },
   smoke_02: { category: "smoke", base: 0.3 },

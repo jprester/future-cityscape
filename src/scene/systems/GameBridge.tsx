@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import {
   FogExp2,
@@ -13,6 +13,12 @@ import type { EnvironmentConfig } from "../../config/environments";
 import type { GameRuntime } from "../../types/game";
 import { EnhancedEffects, getPreset } from "../effects";
 
+// Dev-only Leva-driven effects wrapper. Excluded from prod (DEV is statically
+// false there, so this lazy branch and Leva are dropped from the bundle).
+const DevEffects = import.meta.env.DEV
+  ? lazy(() => import("../dev/DevEffects"))
+  : null;
+
 export function GameBridge() {
   const { gl, scene, camera, set, size } = useThree();
   const {
@@ -22,7 +28,6 @@ export function GameBridge() {
     terminalRef,
     launchReady,
     setLaunchReady,
-    setShowCrash,
   } = useGameStore();
   const controller = usePlayerController();
   const [environment, setEnvironment] = useState<EnvironmentConfig | null>(
@@ -41,7 +46,6 @@ export function GameBridge() {
       terminal: terminalRef.current,
       controller,
       onAssetsLoaded: () => setLaunchReady(true),
-      onCrashChange: (value) => setShowCrash(Boolean(value)),
     }) as unknown as GameRuntime;
     gameRef.current = game;
     setEnvironment(game.environment);
@@ -169,12 +173,23 @@ export function GameBridge() {
           />
         </>
       )}
-      <EnhancedEffects
-        preset={getPreset(settings.visualPreset)}
-        isDay={environment?.name === "day"}
-        enabled={true}
-        qualityLevel={settings.qualityLevel}
-      />
+      {DevEffects ? (
+        <Suspense fallback={null}>
+          <DevEffects
+            isDay={environment?.name === "day"}
+            enabled={true}
+            qualityLevel={settings.qualityLevel}
+            defaultPresetId={settings.visualPreset}
+          />
+        </Suspense>
+      ) : (
+        <EnhancedEffects
+          preset={getPreset(settings.visualPreset)}
+          isDay={environment?.name === "day"}
+          enabled={true}
+          qualityLevel={settings.qualityLevel}
+        />
+      )}
     </>
   );
 }

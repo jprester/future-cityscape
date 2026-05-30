@@ -38,9 +38,6 @@ export const COLORS = {
 
     // Smoke emissive (atmospheric blue)
     smokeEmissive: 0x4488aa,
-
-    // Player car light
-    playerCarLight: 0x00d2ed,
   },
 
   // ============================================================================

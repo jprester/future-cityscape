@@ -1,3 +1,26 @@
+# Unreleased - Default UI, Leva dev tools, drive-mode removal
+
+- Replaced the SynthCity boot-terminal UI with a minimal, neutral default-styled
+  shell: a start/pause overlay + clean settings panel (`src/ui/UiShell.tsx`), a
+  neutral global stylesheet (`src/index.css`), and removal of the global neon
+  `style-v6.css`. Deleted the boot terminal (`initTerminal.ts`) and dead legacy
+  assets (`ui-v3.js`, `bootstrap-dark.min.css`, `home.css`, the Share Tech Mono
+  font, `scanline.png`).
+- Added **Leva** as a dev-only scene-tuning panel (lighting/environment, fog,
+  post-processing) under `src/scene/dev/`, gated behind `import.meta.env.DEV` via
+  lazy imports so it is excluded from production bundles.
+- **Settings-first start flow**: the game no longer auto-initializes when assets
+  finish loading; assets load in the background and the game initializes on
+  "Start" with the chosen settings. Cleaned up the now-dead `?setup` / `?quickstart`
+  URL params; URL settings remain initial-only.
+- **Removed drive mode** and everything used exclusively by it: the `PlayerCar`
+  class + visuals, windshield shader/material/texture, autopilot, car audio, the
+  crash overlay (`onCrashChange`/`showCrash`), the `spinner` player-car assets,
+  and the dead `mode` / `windshieldShader` / `playerCar` settings + `?mode` /
+  `?windshield` params. Freeroam is the only mode. Also removed the fully-unused
+  `constants/labels.ts`. (Flying-car traffic and mega-building systems are
+  intentionally retained.)
+
 # Unreleased - Dependency modernization
 
 - Upgraded the full stack to current majors: React 18 → **19** (`react`,

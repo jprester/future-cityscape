@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { AudioSystem } from "./AudioSystem";
 import { GameBridge } from "./GameBridge";
@@ -11,6 +11,15 @@ import {
   PerformanceStatsCollector,
   type PerformanceStats,
 } from "../../ui/PerformanceMonitor";
+
+// Dev-only Leva tooling. import.meta.env.DEV is statically false in production,
+// so these lazy branches (and Leva itself) are dropped from the prod bundle.
+const LevaPanel = import.meta.env.DEV
+  ? lazy(() => import("../dev/LevaPanel"))
+  : null;
+const DevSceneControls = import.meta.env.DEV
+  ? lazy(() => import("../dev/DevSceneControls"))
+  : null;
 
 /**
  * Frame rate limiter using demand-based rendering with timed invalidation
@@ -69,6 +78,11 @@ function SceneContent({
       <AudioSystem />
       <PointerLockSystem />
       {showPerfMonitor && <PerformanceStatsCollector onStats={onStats} />}
+      {DevSceneControls && (
+        <Suspense fallback={null}>
+          <DevSceneControls />
+        </Suspense>
+      )}
     </>
   );
 }
@@ -116,6 +130,11 @@ export default function SynthCityScene() {
         position="top-right"
         stats={perfStats}
       />
+      {LevaPanel && (
+        <Suspense fallback={null}>
+          <LevaPanel />
+        </Suspense>
+      )}
     </>
   );
 }

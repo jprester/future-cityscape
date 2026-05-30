@@ -2,9 +2,8 @@ import { createContext, useContext, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction, MutableRefObject } from "react";
 
 import { getInitialSettings } from "../config/querySettings";
-import type { GameRuntime } from "../types/game";
+import type { GameRuntime, TerminalApi } from "../types/game";
 import type { GameSettings } from "../types/settings";
-import type { TerminalApi } from "../ui/initTerminal";
 
 type GameStore = {
   settings: GameSettings;
@@ -14,24 +13,20 @@ type GameStore = {
   setLaunchReady: Dispatch<SetStateAction<boolean>>;
   showBlocker: boolean;
   setShowBlocker: Dispatch<SetStateAction<boolean>>;
-  showCrash: boolean;
-  setShowCrash: Dispatch<SetStateAction<boolean>>;
   gameRef: MutableRefObject<GameRuntime | null>;
   terminalRef: MutableRefObject<TerminalApi | null>;
 };
 
 const GameContext = createContext<GameStore | null>(null);
 
-// Quickstart is on by default; opt out with ?setup or ?quickstart=0
-const _qsParams = new URLSearchParams(window.location.search);
-const quickstart =
-  !_qsParams.has("setup") && _qsParams.get("quickstart") !== "0";
+// The legacy boot terminal was removed, so asset loading is always driven by
+// GameBridge (quickstart). Kept as a constant so existing consumers still work.
+const quickstart = true;
 
 export function GameProvider({ children }) {
   const [settings, setSettings] = useState(getInitialSettings);
   const [launchReady, setLaunchReady] = useState(false);
   const [showBlocker, setShowBlocker] = useState(true);
-  const [showCrash, setShowCrash] = useState(false);
   const gameRef = useRef<GameRuntime | null>(null);
   const terminalRef = useRef<TerminalApi | null>(null);
 
@@ -44,12 +39,10 @@ export function GameProvider({ children }) {
       setLaunchReady,
       showBlocker,
       setShowBlocker,
-      showCrash,
-      setShowCrash,
       gameRef,
       terminalRef,
     }),
-    [settings, launchReady, showBlocker, showCrash],
+    [settings, launchReady, showBlocker],
   );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

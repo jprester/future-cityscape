@@ -16,16 +16,6 @@ export function createModelManifest(
   roadWidth: number,
 ): ModelManifest {
   const manifest: ModelManifest = {
-    // Player car (spinner)
-    spinner: {
-      path: "models/spinner.obj",
-      options: { rotateY: -Math.PI / 2 },
-    },
-    spinner_windows: {
-      path: "models/spinner_windows.obj",
-      options: { rotateY: -Math.PI / 2 },
-    },
-
     // Ground plane (procedural)
     ground: {
       type: "plane",

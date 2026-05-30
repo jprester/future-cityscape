@@ -1,38 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import type { ChangeEvent } from "react";
+import { useEffect, useState } from "react";
+import type { ChangeEvent, CSSProperties } from "react";
 import { useGameStore } from "../context/GameContext";
-import type {
-  QualityLevel,
-  FrameRateLimit,
-  VisibilitySettings,
-} from "../types/settings";
-import { initTerminal } from "./initTerminal";
+import type { QualityLevel, FrameRateLimit } from "../types/settings";
 import { PRESET_NAMES, VISUAL_PRESETS } from "../scene/effects";
 
 const curatedWorldSeeds = [9746, 6362, 4217, 5794];
-
-const controlsText = {
-  drive: [
-    "use mouse to look around/steer",
-    "use mouse wheel to zoom",
-    "press <space> to toggle autopilot",
-    "hold <w> to boost, <s> to brake",
-    "use <+> and <-> to adjust volume",
-    "press <]> to skip current song",
-    "press <p> to pause current song",
-    "press <esc> to open terminal",
-  ],
-  freeroam: [
-    "use <w,a,s,d> to move camera",
-    "use mouse wheel to zoom",
-    "use <r> and <f> to adjust height",
-    "hold <shift> to increase speed",
-    "use <+> and <-> to adjust volume",
-    "press <]> to skip current song",
-    "press <p> to pause current song",
-    "press <esc> to open terminal",
-  ],
-};
 
 function randomCuratedSeed() {
   return curatedWorldSeeds[
@@ -40,34 +12,26 @@ function randomCuratedSeed() {
   ];
 }
 
+/**
+ * Minimal, neutral app shell:
+ *   - a start / pause overlay (shown whenever the pointer is unlocked), with
+ *   - a collapsible settings panel using default-styled form controls.
+ * Replaces the old SynthCity boot-terminal splash. Pointer-lock state (and thus
+ * overlay visibility) is owned by PointerLockSystem via `showBlocker`.
+ */
 export default function UiShell() {
-  const {
-    settings,
-    setSettings,
-    quickstart,
-    gameRef,
-    terminalRef,
-    launchReady,
-    showBlocker,
-    showCrash,
-  } = useGameStore();
-  const terminalRefLocal = useRef<HTMLDivElement | null>(null);
-  const resourcesRef = useRef<HTMLDivElement | null>(null);
-  const controlsRef = useRef<HTMLDivElement | null>(null);
-  const cursorRef = useRef<HTMLSpanElement | null>(null);
+  const { settings, setSettings, gameRef, launchReady, showBlocker } =
+    useGameStore();
 
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsLocked, setSettingsLocked] = useState(false);
-  const [mode, setMode] = useState(settings.mode ?? "drive");
+  const [started, setStarted] = useState(false);
+
   const [worldSeedMode, setWorldSeedMode] = useState("curated");
   const [worldSeedValue, setWorldSeedValue] = useState(
     settings.worldSeed ?? randomCuratedSeed(),
   );
   const [renderScaling, setRenderScaling] = useState(
     String(settings.renderScaling ?? 1),
-  );
-  const [windshieldShader, setWindshieldShader] = useState(
-    settings.windshieldShader ?? "simple",
   );
   const [visualPreset, setVisualPreset] = useState(
     settings.visualPreset ?? "default",
@@ -78,536 +42,270 @@ export default function UiShell() {
   const [frameRateLimit, setFrameRateLimit] = useState<FrameRateLimit>(
     settings.frameRateLimit ?? 0,
   );
-  const [visibility, setVisibility] = useState<VisibilitySettings>(
-    settings.visibility,
-  );
-  const [showDebug, setShowDebug] = useState(false);
 
-  useEffect(() => {
-    // In quickstart mode, GameBridge handles asset loading directly
-    if (quickstart) {
-      return () => {};
-    }
+  // Settings-first: we do NOT auto-initialize when assets finish loading.
+  // Assets load in the background (GameBridge), the user picks settings on this
+  // overlay, and the game only initializes on "Start" (handleStart) — so mode
+  // and the rest are read with the chosen values.
 
-    const { api, cleanup } = initTerminal({
-      terminalEl: terminalRefLocal.current,
-      resourcesEl: resourcesRef.current,
-      controlsEl: controlsRef.current,
-      cursorEl: cursorRef.current,
-      onShowSettings: () => {
-        setShowSettings(true);
-        if (api?.updateControls) {
-          api.updateControls(controlsText[mode]);
-        }
-      },
-      onStartLoad: () => {
-        if (gameRef.current && gameRef.current.load) {
-          gameRef.current.load();
-        }
-      },
-    });
-
-    terminalRef.current = api || null;
-    if (gameRef.current && gameRef.current.setTerminal) {
-      gameRef.current.setTerminal(api || null);
-    }
-
-    return cleanup;
-  }, []);
-
-  // Quickstart: auto-init game once assets are loaded (pointer lock still needs user click)
-  const quickstartInitDone = useRef(false);
-  const [quickstartReady, setQuickstartReady] = useState(false);
-  useEffect(() => {
-    if (!quickstart || !launchReady || quickstartInitDone.current) return;
-    quickstartInitDone.current = true;
-    const game = gameRef.current;
-    if (game) {
-      game.onEnterClick();
-      setQuickstartReady(true);
-    }
-  }, [quickstart, launchReady]);
-
-  useEffect(() => {
-    setSettings((prev) => ({ ...prev, mode }));
-    if (terminalRef.current?.updateControls) {
-      terminalRef.current.updateControls(controlsText[mode]);
-    }
-  }, [mode]);
-
+  // Propagate local control state to the shared settings store.
   useEffect(() => {
     setSettings((prev) => ({ ...prev, worldSeed: worldSeedValue }));
-  }, [worldSeedValue]);
-
+  }, [worldSeedValue, setSettings]);
   useEffect(() => {
-    setSettings((prev) => ({
-      ...prev,
-      renderScaling: parseFloat(renderScaling),
-    }));
-  }, [renderScaling]);
-
-  useEffect(() => {
-    setSettings((prev) => ({ ...prev, windshieldShader }));
-  }, [windshieldShader]);
-
+    setSettings((prev) => ({ ...prev, renderScaling: parseFloat(renderScaling) }));
+  }, [renderScaling, setSettings]);
   useEffect(() => {
     setSettings((prev) => ({ ...prev, visualPreset }));
-  }, [visualPreset]);
-
+  }, [visualPreset, setSettings]);
   useEffect(() => {
     setSettings((prev) => ({ ...prev, qualityLevel }));
-  }, [qualityLevel]);
-
+  }, [qualityLevel, setSettings]);
   useEffect(() => {
     setSettings((prev) => ({ ...prev, frameRateLimit }));
-  }, [frameRateLimit]);
+  }, [frameRateLimit, setSettings]);
 
-  useEffect(() => {
-    setSettings((prev) => ({ ...prev, visibility }));
-  }, [visibility]);
-
-  function handleModeChange(event: ChangeEvent<HTMLInputElement>) {
-    setMode(event.target.value);
-  }
-
-  function handleWorldSeedModeChange(event: ChangeEvent<HTMLInputElement>) {
+  function handleWorldSeedModeChange(event: ChangeEvent<HTMLSelectElement>) {
     const value = event.target.value;
     setWorldSeedMode(value);
-
-    if (value === "curated") {
-      setWorldSeedValue(randomCuratedSeed());
-    } else if (value === "random") {
+    if (value === "curated") setWorldSeedValue(randomCuratedSeed());
+    else if (value === "random")
       setWorldSeedValue(Math.round(Math.random() * 999999));
-    }
   }
 
-  function handleWorldSeedValueChange(event: ChangeEvent<HTMLInputElement>) {
-    setWorldSeedValue(Number(event.target.value));
-  }
-
-  function handleRenderScalingChange(event: ChangeEvent<HTMLInputElement>) {
-    setRenderScaling(event.target.value);
-  }
-
-  function handleWindshieldShaderChange(event: ChangeEvent<HTMLInputElement>) {
-    setWindshieldShader(event.target.value);
-  }
-
-  function handleVisualPresetChange(event: ChangeEvent<HTMLInputElement>) {
-    setVisualPreset(event.target.value);
-  }
-
-  function handleQualityLevelChange(event: ChangeEvent<HTMLInputElement>) {
-    setQualityLevel(event.target.value as QualityLevel);
-  }
-
-  function handleFrameRateLimitChange(event: ChangeEvent<HTMLInputElement>) {
-    setFrameRateLimit(Number(event.target.value) as FrameRateLimit);
-  }
-
-  function handleVisibilityChange(key: keyof VisibilitySettings) {
-    setVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  function handleEnterClick() {
-    setSettingsLocked(true);
+  function handleStart() {
     const game = gameRef.current;
-    if (game) {
-      game.onEnterClick();
-      if (!game.initialized) {
-        return;
-      }
-      const target = game.canvas || document.body;
-      if (target && target.requestPointerLock) {
-        target.requestPointerLock();
-      }
-    }
+    if (!game) return;
+    if (!game.initialized && game.onEnterClick) game.onEnterClick();
+    if (!game.initialized) return;
+    const target = game.canvas || document.body;
+    target?.requestPointerLock?.();
+    setStarted(true);
   }
 
-  // Quickstart: show minimal overlay instead of full splash
-  if (quickstart) {
-    function handleQuickstartClick() {
-      const game = gameRef.current;
-      if (!game || !game.initialized) return;
-      const target = game.canvas || document.body;
-      if (target && target.requestPointerLock) {
-        target.requestPointerLock();
-      }
-    }
-
-    return (
-      <>
-        <div
-          id="blocker"
-          className={showBlocker ? "" : "hide"}
-          onClick={quickstartReady ? handleQuickstartClick : undefined}
-          style={{ cursor: quickstartReady ? "pointer" : "default" }}>
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontFamily: "'Courier New', monospace",
-              color: "#00fff7",
-              fontSize: "18px",
-              letterSpacing: "4px",
-              textShadow: "0 0 10px #00fff7, 0 0 20px #00fff7",
-            }}>
-            {quickstartReady ? ">> CLICK TO START <<" : ">> LOADING... <<"}
-          </div>
-        </div>
-
-        <div id="crashMessage" style={{ display: showCrash ? "flex" : "none" }}>
-          <div className="g1">[ You crashed ]</div>
-        </div>
-      </>
-    );
-  }
+  const primaryLabel = !launchReady
+    ? "Loading…"
+    : started
+      ? "Resume"
+      : "Click to start";
 
   return (
     <>
-      <div id="blocker" className={showBlocker ? "" : "hide"}>
-        <div id="container">
-          <div className="tCol leftCol">
-            <div className="tRow" style={{ height: "100%" }}>
-              <div className="tHeader">&gt;Terminal</div>
-              <div id="terminal" ref={terminalRefLocal}>
-                <span id="cursor" ref={cursorRef}>
-                  &#9619;
-                </span>
-              </div>
-            </div>
-          </div>
-          <div
-            className="tCol rightCol"
-            style={{ width: "calc(100% - 540px)" }}>
-            <div className="tRow" style={{ height: "25%" }}>
-              <div className="tHeader">#Resources</div>
-              <div id="resources" ref={resourcesRef}>
-                &gt;&gt; No resources queued
-              </div>
-            </div>
-            <div className="tRow" style={{ height: "25%" }}>
-              <div className="tHeader">#Settings</div>
-              <div
-                id="settings"
-                className={settingsLocked ? "locked" : ""}
-                style={{ display: showSettings ? "block" : "none" }}>
-                <div
-                  id="settingsLockMessage"
-                  className="g1"
-                  style={{
-                    display: settingsLocked ? "block" : "none",
-                    marginBottom: "10px",
-                  }}>
-                  &gt;&gt; Settings locked: refresh page to unlock
-                </div>
-                <div style={{ marginBottom: "5px" }}>
-                  <span>Mode:</span>
-                  <label className="formCheckContainer">
+      {showBlocker && (
+        <div style={styles.overlay}>
+          <div style={styles.card}>
+            <div style={styles.title}>Future Cityscape</div>
+
+            <button
+              type="button"
+              style={{
+                ...styles.primaryButton,
+                ...(launchReady ? {} : styles.primaryButtonDisabled),
+              }}
+              disabled={!launchReady}
+              onClick={handleStart}
+            >
+              {primaryLabel}
+            </button>
+
+            <button
+              type="button"
+              style={styles.linkButton}
+              onClick={() => setShowSettings((v) => !v)}
+            >
+              {showSettings ? "Hide settings" : "Settings"}
+            </button>
+
+            {showSettings && (
+              <div style={styles.panel}>
+                <Field label="World seed">
+                  <select
+                    style={styles.select}
+                    value={worldSeedMode}
+                    onChange={handleWorldSeedModeChange}
+                  >
+                    <option value="curated">Curated</option>
+                    <option value="random">Random</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </Field>
+
+                {worldSeedMode === "custom" && (
+                  <Field label="Seed">
                     <input
-                      type="radio"
-                      name="settingsMode"
-                      value="drive"
-                      checked={mode === "drive"}
-                      onChange={handleModeChange}
+                      type="number"
+                      style={styles.select}
+                      value={Number.isNaN(worldSeedValue) ? 0 : worldSeedValue}
+                      onChange={(e) => setWorldSeedValue(Number(e.target.value))}
                     />
-                    <span className="checkmark">[Drive]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsMode"
-                      value="freeroam"
-                      checked={mode === "freeroam"}
-                      onChange={handleModeChange}
-                    />
-                    <span className="checkmark">[Freeroam]</span>
-                  </label>
-                </div>
-                <div style={{ marginBottom: "5px" }}>
-                  <span>World Seed:</span>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsWorldSeed"
-                      value="curated"
-                      checked={worldSeedMode === "curated"}
-                      onChange={handleWorldSeedModeChange}
-                    />
-                    <span className="checkmark">[Curated]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsWorldSeed"
-                      value="random"
-                      checked={worldSeedMode === "random"}
-                      onChange={handleWorldSeedModeChange}
-                    />
-                    <span className="checkmark">[Random]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsWorldSeed"
-                      value="custom"
-                      checked={worldSeedMode === "custom"}
-                      onChange={handleWorldSeedModeChange}
-                    />
-                    <span className="checkmark">[Custom]</span>
-                  </label>
-                </div>
-                <div
-                  id="settingsWorldSeedValueContainer"
-                  style={{
-                    display: worldSeedMode === "custom" ? "block" : "none",
-                    marginBottom: "5px",
-                  }}>
-                  <span>Seed:</span>
-                  <input
-                    type="number"
-                    id="settingsWorldSeedValue"
-                    name="settingsWorldSeedValue"
-                    value={Number.isNaN(worldSeedValue) ? 0 : worldSeedValue}
-                    onChange={handleWorldSeedValueChange}
-                  />
-                </div>
-                <div style={{ marginBottom: "5px" }}>
-                  <span>Resolution:</span>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsRenderScaling"
-                      value="0.5"
-                      checked={renderScaling === "0.5"}
-                      onChange={handleRenderScalingChange}
-                    />
-                    <span className="checkmark">[0.5x]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsRenderScaling"
-                      value="0.75"
-                      checked={renderScaling === "0.75"}
-                      onChange={handleRenderScalingChange}
-                    />
-                    <span className="checkmark">[0.75x]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsRenderScaling"
-                      value="1"
-                      checked={renderScaling === "1"}
-                      onChange={handleRenderScalingChange}
-                    />
-                    <span className="checkmark">[1.0x]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsRenderScaling"
-                      value="1.5"
-                      checked={renderScaling === "1.5"}
-                      onChange={handleRenderScalingChange}
-                    />
-                    <span className="checkmark">[1.5x]</span>
-                  </label>
-                </div>
-                <div style={{ marginBottom: "5px" }}>
-                  <span>FPS Limit:</span>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsFrameRateLimit"
-                      value="30"
-                      checked={frameRateLimit === 30}
-                      onChange={handleFrameRateLimitChange}
-                    />
-                    <span className="checkmark">[30]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsFrameRateLimit"
-                      value="60"
-                      checked={frameRateLimit === 60}
-                      onChange={handleFrameRateLimitChange}
-                    />
-                    <span className="checkmark">[60]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsFrameRateLimit"
-                      value="120"
-                      checked={frameRateLimit === 120}
-                      onChange={handleFrameRateLimitChange}
-                    />
-                    <span className="checkmark">[120]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsFrameRateLimit"
-                      value="0"
-                      checked={frameRateLimit === 0}
-                      onChange={handleFrameRateLimitChange}
-                    />
-                    <span className="checkmark">[Off]</span>
-                  </label>
-                </div>
-                <div
-                  id="settingsWindshieldShaderContainer"
-                  style={{
-                    marginBottom: "5px",
-                    display: mode === "drive" ? "block" : "none",
-                  }}>
-                  <span>Windshield FX:</span>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsWindshieldShader"
-                      value="simple"
-                      checked={windshieldShader === "simple"}
-                      onChange={handleWindshieldShaderChange}
-                    />
-                    <span className="checkmark">[Simple]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsWindshieldShader"
-                      value="advanced"
-                      checked={windshieldShader === "advanced"}
-                      onChange={handleWindshieldShaderChange}
-                    />
-                    <span className="checkmark">[Advanced]</span>
-                  </label>
-                </div>
-                <div style={{ marginBottom: "5px" }}>
-                  <span>Quality:</span>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsQualityLevel"
-                      value="low"
-                      checked={qualityLevel === "low"}
-                      onChange={handleQualityLevelChange}
-                    />
-                    <span className="checkmark">[Low]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsQualityLevel"
-                      value="medium"
-                      checked={qualityLevel === "medium"}
-                      onChange={handleQualityLevelChange}
-                    />
-                    <span className="checkmark">[Medium]</span>
-                  </label>
-                  <label className="formCheckContainer">
-                    <input
-                      type="radio"
-                      name="settingsQualityLevel"
-                      value="high"
-                      checked={qualityLevel === "high"}
-                      onChange={handleQualityLevelChange}
-                    />
-                    <span className="checkmark">[High]</span>
-                  </label>
-                </div>
-                <div
-                  style={{
-                    marginBottom: "5px",
-                    display: qualityLevel !== "low" ? "block" : "none",
-                  }}>
-                  <span>Visual FX:</span>
-                  {PRESET_NAMES.map((presetId) => (
-                    <label key={presetId} className="formCheckContainer">
-                      <input
-                        type="radio"
-                        name="settingsVisualPreset"
-                        value={presetId}
-                        checked={visualPreset === presetId}
-                        onChange={handleVisualPresetChange}
-                      />
-                      <span className="checkmark">
-                        [{VISUAL_PRESETS[presetId].name}]
-                      </span>
-                    </label>
-                  ))}
-                </div>
-                <div style={{ marginBottom: "5px" }}>
-                  <span
-                    style={{ cursor: "pointer", textDecoration: "underline" }}
-                    onClick={() => setShowDebug(!showDebug)}>
-                    Debug: [{showDebug ? "-" : "+"}]
-                  </span>
-                </div>
-                {showDebug && (
-                  <div style={{ marginBottom: "5px", paddingLeft: "10px" }}>
-                    <div className="g1" style={{ marginBottom: "3px" }}>
-                      &gt;&gt; Object Visibility
-                    </div>
-                    {(
-                      [
-                        ["buildings", "Buildings"],
-                        ["megaBuildings", "Mega Buildings"],
-                        ["ads", "Ads"],
-                        ["smoke", "Smoke"],
-                        ["spotlights", "Spotlights"],
-                        ["toppers", "Toppers"],
-                        ["trafficCars", "Traffic Cars"],
-                        ["playerCar", "Player Car"],
-                        ["ground", "Ground"],
-                        ["storefronts", "Storefronts"],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <label
-                        key={key}
-                        className="formCheckContainer"
-                        style={{ display: "block" }}>
-                        <input
-                          type="checkbox"
-                          checked={visibility[key]}
-                          onChange={() => handleVisibilityChange(key)}
-                        />
-                        <span className="checkmark">
-                          [{visibility[key] ? "x" : " "}] {label}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+                  </Field>
                 )}
+
+                <Field label="Quality">
+                  <select
+                    style={styles.select}
+                    value={qualityLevel}
+                    onChange={(e) =>
+                      setQualityLevel(e.target.value as QualityLevel)
+                    }
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </Field>
+
+                {qualityLevel !== "low" && (
+                  <Field label="Visual FX">
+                    <select
+                      style={styles.select}
+                      value={visualPreset}
+                      onChange={(e) => setVisualPreset(e.target.value)}
+                    >
+                      {PRESET_NAMES.map((presetId) => (
+                        <option key={presetId} value={presetId}>
+                          {VISUAL_PRESETS[presetId].name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
+
+                <Field label="Resolution">
+                  <select
+                    style={styles.select}
+                    value={renderScaling}
+                    onChange={(e) => setRenderScaling(e.target.value)}
+                  >
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1">1.0x</option>
+                    <option value="1.5">1.5x</option>
+                  </select>
+                </Field>
+
+                <Field label="FPS limit">
+                  <select
+                    style={styles.select}
+                    value={String(frameRateLimit)}
+                    onChange={(e) =>
+                      setFrameRateLimit(Number(e.target.value) as FrameRateLimit)
+                    }
+                  >
+                    <option value="30">30</option>
+                    <option value="60">60</option>
+                    <option value="120">120</option>
+                    <option value="0">Unlimited</option>
+                  </select>
+                </Field>
+
+                <div style={styles.hint}>World seed updates live.</div>
               </div>
-            </div>
-            <div className="tRow" style={{ height: "25%" }}>
-              <div className="tHeader">#Controls</div>
-              <div id="controls" ref={controlsRef}>
-                &gt;&gt; No program loaded
-              </div>
-            </div>
-            <div className="tRow" style={{ height: "32px" }}>
-              <button
-                id="enterBtn"
-                style={{ display: launchReady ? "block" : "none" }}
-                onClick={handleEnterClick}>
-                &gt;&gt;Launch&lt;&lt;
-              </button>
-            </div>
+            )}
           </div>
         </div>
-      </div>
-
-      <div id="crashMessage" style={{ display: showCrash ? "flex" : "none" }}>
-        <div className="g1">[ You crashed ]</div>
-      </div>
+      )}
     </>
   );
 }
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label style={styles.field}>
+      <span style={styles.fieldLabel}>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const styles: Record<string, CSSProperties> = {
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 100,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(0, 0, 0, 0.55)",
+    backdropFilter: "blur(6px)",
+  },
+  card: {
+    minWidth: 280,
+    maxWidth: 360,
+    padding: "28px 24px",
+    borderRadius: 12,
+    background: "var(--ui-bg)",
+    border: "1px solid var(--ui-border)",
+    boxShadow: "0 10px 40px rgba(0, 0, 0, 0.5)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 600,
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  primaryButton: {
+    padding: "10px 16px",
+    borderRadius: 8,
+    border: "none",
+    background: "var(--ui-accent)",
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  primaryButtonDisabled: {
+    background: "rgba(255, 255, 255, 0.12)",
+    color: "var(--ui-text-dim)",
+    cursor: "default",
+  },
+  linkButton: {
+    background: "none",
+    border: "none",
+    color: "var(--ui-text-dim)",
+    fontSize: 13,
+    cursor: "pointer",
+    padding: 4,
+  },
+  panel: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    marginTop: 4,
+    paddingTop: 12,
+    borderTop: "1px solid var(--ui-border)",
+  },
+  field: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  fieldLabel: {
+    color: "var(--ui-text-dim)",
+    fontSize: 13,
+  },
+  select: {
+    background: "rgba(0, 0, 0, 0.35)",
+    color: "var(--ui-text)",
+    border: "1px solid var(--ui-border)",
+    borderRadius: 6,
+    padding: "4px 8px",
+    fontSize: 13,
+    minWidth: 110,
+  },
+  hint: {
+    color: "var(--ui-text-dim)",
+    fontSize: 11,
+    marginTop: 4,
+  },
+};
