@@ -8,28 +8,25 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:webpack": "webpack --mode production",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@react-three/drei": "^9.122.0",
-    "@react-three/fiber": "^8.17.10",
-    "@react-three/postprocessing": "^2.16.2",
-    "postprocessing": "6.38.3",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "three": "0.159.0",
-    "three-mesh-bvh": "0.6.8"
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@react-three/postprocessing": "^3.0.4",
+    "postprocessing": "^6.39.1",
+    "react": "~19.2.6",
+    "react-dom": "~19.2.6",
+    "three": "0.184.0",
+    "three-mesh-bvh": "^0.9.10"
   },
   "devDependencies": {
-    "@types/react": "^18.3.10",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.10",
-    "webpack": "^5.78.0",
-    "webpack-cli": "^5.0.1"
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.2",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.14"
   }
 }

@@ -1,3 +1,21 @@
+# Unreleased - Dependency modernization
+
+- Upgraded the full stack to current majors: React 18 → **19** (`react`,
+  `react-dom`), `@react-three/fiber` 8 → **9**, `@react-three/drei` 9 → **10**,
+  `@react-three/postprocessing` 2 → **3**, `three` 0.159 → **0.184**,
+  `three-mesh-bvh` 0.6 → **0.9**, `postprocessing` → **6.39**, `vite` 5 → **8**,
+  `@vitejs/plugin-react` 4 → **6**. No source changes were needed for the
+  framework migration (modern color management + standard R3F hooks already).
+- `react`/`react-dom` pinned with `~19.2` (R3F 9's peer caps at `<19.3`).
+- Removed the legacy webpack build (`webpack.config.js`, the `build:webpack`
+  script, `webpack`/`webpack-cli` deps) — Vite is the sole builder.
+- Fixed a lighting regression from three 0.184: `scene.environment` now lights
+  `MeshPhong`/`Lambert` materials (it didn't ≤0.159), which over-brightened the
+  Phong ads/OBJ buildings and made transparent ad backgrounds visible. Added a
+  per-environment `environmentIntensity` (applied as `Scene.environmentIntensity`),
+  set to `0`, restoring the original look. PBR buildings use their own explicit
+  `envMap` and are unaffected.
+
 # Unreleased - Collapse to standalone city + rebrand to Future Cityscape
 
 - Removed the infinite procedural pipeline: `GeneratorSystem`, the

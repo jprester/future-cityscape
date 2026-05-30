@@ -123,6 +123,10 @@ export function GameBridge() {
     const envMap = game.assets.getTexture(environment.environmentMap);
     if (envMap) {
       scene.environment = envMap;
+      // three r162+ lights MeshPhong/Lambert from scene.environment too (it
+      // didn't ≤0.159). PBR buildings use their own explicit envMap, so this
+      // only scales the env contribution to the Phong ads/OBJ buildings.
+      scene.environmentIntensity = environment.environmentIntensity;
     }
   }, [environment, launchReady, scene, gameRef]);
 
