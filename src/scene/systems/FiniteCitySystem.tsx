@@ -11,7 +11,11 @@ import { useFrame } from "@react-three/fiber";
 import { useGameStore } from "../../context/GameContext";
 import { generateLayout, loadLayoutFromURL } from "../../config/cityLayouts";
 import { CITY_BLOCK_SIZE, ROAD_WIDTH } from "../../config/world";
-import { unitsToMeters, UNITS_PER_METER } from "../../config/scale";
+import {
+  unitsToMeters,
+  UNITS_PER_METER,
+  HUMAN_EYE_HEIGHT_UNITS,
+} from "../../config/scale";
 import { createPerlin } from "../../utils";
 import type { FiniteCityLayout } from "../../config/cityLayouts";
 import {
@@ -130,9 +134,26 @@ export function FiniteCitySystem() {
 
     // Apply layout spawn position once both game and layout are ready
     if (!spawnAppliedRef.current && layout && game.player) {
-      const { x, z, rotationY } = layout.spawn;
+      const { x, z, rotationY, y, roofModelKey, roofScaleY } = layout.spawn;
+
+      // Resolve the eye-height Y. A rooftop spawn (roofModelKey) needs the
+      // model's bounding box, which is only available once assets are loaded —
+      // so defer the whole spawn until then rather than landing at street level.
+      let eyeY = y;
+      if (eyeY == null && roofModelKey) {
+        if (!game.assets?.loaded) return;
+        const geom = game.assets.getModel(roofModelKey);
+        if (!geom) return;
+        if (!geom.boundingBox) geom.computeBoundingBox();
+        const roofTop = geom.boundingBox?.max.y ?? 0;
+        eyeY = roofTop * (roofScaleY ?? 1) + HUMAN_EYE_HEIGHT_UNITS;
+      }
+
       game.player.body.position.x = x;
       game.player.body.position.z = z;
+      if (eyeY != null) {
+        game.player.body.position.y = eyeY;
+      }
       if (game.player.camera_target) {
         game.player.camera_target.rotation.y = rotationY;
       }

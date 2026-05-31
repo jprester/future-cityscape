@@ -1,17 +1,14 @@
 import { PerspectiveCamera, Object3D, Vector3 } from "three";
 import { frameFactor, smoothingFactor } from "../utils";
-import {
-  HUMAN_EYE_HEIGHT_UNITS,
-  MIN_EYE_HEIGHT_METERS,
-  MAX_EYE_HEIGHT_METERS,
-  meters,
-} from "../config/scale";
+import { HUMAN_EYE_HEIGHT_UNITS } from "../config/scale";
 
 class Player {
   constructor(params) {
     // params
 
     this.controller = params.controller;
+    // Game reference — used to query the collider for the surface underfoot.
+    this.game = params.game;
 
     // settings
 
@@ -72,6 +69,15 @@ class Player {
     this.velocity = new Vector3();
     this.move_max_speed = 0;
     this.move_max_speed_current = 0;
+
+    // gravity — the player is a grounded human, not a free-flying camera.
+    // `gravity` is a per-frame (60fps) downward acceleration; `velocity_y` is
+    // the resulting vertical speed. Reused scratch vectors keep the per-frame
+    // ground raycast allocation-free.
+    this.gravity = 0.3;
+    this.velocity_y = 0;
+    this._groundOrigin = new Vector3();
+    this._groundDir = new Vector3(0, -1, 0);
   }
 
   update(delta = 1 / 60) {
@@ -176,27 +182,45 @@ class Player {
       this.move_max_speed_current -= this.move_accel * f;
     this.velocity.clampLength(0, this.move_max_speed_current);
 
-    /*--- UPDATE POSITION ---*/
+    /*--- UPDATE POSITION (HORIZONTAL) ---*/
 
-    // x, z — movement speed scales with altitude (fly faster up high), but is
-    // floored at 1x so street-level walking stays a normal pace instead of
-    // crawling (the raw height factor is ~0.03 at human eye height).
-    const heightSpeedFactor = Math.max(this.body.position.y * 0.01, 1.0);
-    this.body.position.x += this.velocity.x * heightSpeedFactor * f;
-    this.body.position.z += this.velocity.z * heightSpeedFactor * f;
+    // Realistic human: a constant ground-level walking/running pace (the old
+    // altitude-based speed scaling went with flight, which is now gone).
+    this.body.position.x += this.velocity.x * f;
+    this.body.position.z += this.velocity.z * f;
 
-    // y (altitude change is multiplicative per frame -> raise to the f power)
-    if (this.controller.key_r) {
-      this.body.position.y *= Math.pow(1.02, f);
+    /*--- GRAVITY + STAND ON SURFACE ---*/
+
+    // The player rests on whatever surface is directly below — a building roof,
+    // or the street (y = 0) as the world floor — and falls under gravity if
+    // they step off an edge. Flight (R/F altitude) has been removed entirely.
+    //
+    // Gated on the collider being populated so the spawn position (e.g. a
+    // rooftop) isn't yanked down to the street before the city's collision
+    // meshes have loaded.
+    const collider = this.game && this.game.collider;
+    if (collider && collider.enabled && collider.meshes.length > 0) {
+      const surfaceY = this.sampleGroundHeight(
+        this.body.position.x,
+        this.body.position.z,
+        this.body.position.y + 2,
+      );
+      const targetEyeY = surfaceY + this.player_height;
+
+      if (this.body.position.y > targetEyeY + 0.01) {
+        // Airborne — accelerate downward, then land on the surface.
+        this.velocity_y -= this.gravity * f;
+        this.body.position.y += this.velocity_y * f;
+        if (this.body.position.y <= targetEyeY) {
+          this.body.position.y = targetEyeY;
+          this.velocity_y = 0;
+        }
+      } else {
+        // Grounded — stick to the surface (also steps up small rises).
+        this.body.position.y = targetEyeY;
+        this.velocity_y = 0;
+      }
     }
-    if (this.controller.key_f) {
-      this.body.position.y /= Math.pow(1.02, f);
-    }
-    // Altitude limits in real meters: ~0.9 m (crouch) up to ~500 m (flight).
-    const minY = meters(MIN_EYE_HEIGHT_METERS);
-    const maxY = meters(MAX_EYE_HEIGHT_METERS);
-    if (this.body.position.y < minY) this.body.position.y = minY;
-    if (this.body.position.y > maxY) this.body.position.y = maxY;
 
     /*--- UPDATE AUDIO ---*/
 
@@ -207,6 +231,21 @@ class Player {
       );
     if (this.soundCityAmbient)
       this.soundCityAmbient.setVolume(1 - this.body.position.y / 800);
+  }
+
+  // Height of the nearest collision surface directly below (x, z), looking down
+  // from `fromY`. Buildings (incl. the rooftop the player stands on) are
+  // registered with the collider; the street is not, so we fall back to y = 0
+  // as the world floor when the downward ray hits nothing.
+  sampleGroundHeight(x, z, fromY) {
+    const collider = this.game && this.game.collider;
+    if (!collider) return 0;
+    this._groundOrigin.set(x, fromY, z);
+    const hits = collider.raycast(this._groundOrigin, this._groundDir);
+    if (hits && hits.length > 0) {
+      return Math.max(hits[0].point.y, 0);
+    }
+    return 0;
   }
 
   // window resize callback

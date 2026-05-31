@@ -49,9 +49,15 @@ const SMALL_BUILDING_WINDOW_SCALE = 1.08;
 //   A-L = specific tower variant (A=tower_01, B=tower_02, ... L=tower_12)
 //   S  = unique skyscraper — auto-assigns from the list below
 //   1-4 = specific skyscraper (1=skyscraper_06, 2=skyscraper_09, 3=skyscraper_10, 4=skyscraper_11)
+//   X  = rooftop vantage building (the player spawns on its roof, dead center)
 //
 // Grid reads top-to-bottom = north-to-south (gj 0..16).
-// Player spawns facing north from bottom-center.
+//
+// Layout intent ("rooftop view"): a mid-sized vantage tower sits dead center.
+// The player spawns on its roof and looks out over a dense, radial forest of
+// towers (T) that rings the vantage on all sides, fading through a skyscraper
+// belt (S) into lower commercial (c) and residential (r) blocks toward the
+// fog-shrouded edges — an impressive skyline in every direction.
 
 // Skyscrapers placed as unique buildings (like towers but mid-rise)
 const UNIQUE_SKYSCRAPERS = [
@@ -62,22 +68,27 @@ const UNIQUE_SKYSCRAPERS = [
   "skyscraper_08",
 ];
 
+// The center vantage building the player stands on. A flat-topped, mid-sized
+// skyscraper so the surrounding towers read as taller and the player can see
+// out over the cardinal-facing skyscrapers into the tower forest beyond.
+const VANTAGE_MODEL = "skyscraper_06";
+
 const CITY_TEMPLATE = `
 . . . . . . . . . . . . . . . . .
 . r r r r r r r r r r r r r r r .
-. r r r m m m m m m m m m r r r .
-. r r m m m m S m m S m m m r r .
-. r m m m m m T m m m T m m m r .
-. r m m m T m m m m m m m T m r .
-. r m m S m m m m m m m m S m r .
-. r m m T m m m m m m m T m m r .
-. r m m m m m m m m m m m m m r .
-. r m m m T m m m m m T m m m r .
-. r m m S m m m m m m m m S m r .
-. r m m m T m m m m m m m T m r .
-. r m m m m m T m m m T m m m r .
-. r r m m m m m m m m m m m r r .
-. r r r m m m m m m m m m r r r .
+. r c c c c c c c c c c c c c r .
+. r c S S S S S S S S S S S c r .
+. r c S T T T T T T T T T S c r .
+. r c S T T T T T T T T T S c r .
+. r c S T T T T T T T T T S c r .
+. r c S T T T T S T T T T S c r .
+. r c S T T T S X S T T T S c r .
+. r c S T T T T S T T T T S c r .
+. r c S T T T T T T T T T S c r .
+. r c S T T T T T T T T T S c r .
+. r c S T T T T T T T T T S c r .
+. r c S S S S S S S S S S S c r .
+. r c c c c c c c c c c c c c r .
 . r r r r r r r r r r r r r r r .
 . . . . . . . . . . . . . . . . .
 `;
@@ -90,11 +101,12 @@ type BlockType =
   | "commercial"
   | "industrial"
   | "mixed"
-  | "tower";
+  | "tower"
+  | "vantage";
 
 type ParsedBlock = {
   type: BlockType;
-  towerKey?: string; // set for tower blocks
+  towerKey?: string; // set for tower / vantage blocks
 };
 
 function parseTemplate(template: string): ParsedBlock[][] {
@@ -123,6 +135,8 @@ function parseTemplate(template: string): ParsedBlock[][] {
       switch (cell) {
         case ".":
           return { type: "empty" };
+        case "X":
+          return { type: "vantage", towerKey: VANTAGE_MODEL };
         case "r":
           return { type: "residential" };
         case "c":
@@ -185,6 +199,12 @@ export function generateLayout(
 
   const halfGrid = Math.floor(gridSize / 2);
 
+  // Captured when the vantage ("X") block is placed, so the player can spawn on
+  // its roof. The roof height is resolved at runtime from the model's bounding
+  // box (see FiniteCitySystem), so we only need its position + Y scale here.
+  let vantage: { x: number; z: number; modelKey: string; scaleY: number } | null =
+    null;
+
   for (let gj = 0; gj < gridSize; gj++) {
     const row = grid[gj];
     if (!row) continue;
@@ -206,13 +226,20 @@ export function generateLayout(
         continue;
       }
 
-      if (block.type === "tower" && block.towerKey) {
-        // ── Tower ────────────────────────────────────────────────────────
+      if (
+        (block.type === "tower" || block.type === "vantage") &&
+        block.towerKey
+      ) {
+        // ── Tower / vantage ──────────────────────────────────────────────
         const wx = blockX + CITY_BLOCK_SIZE / 2;
         const wz = blockZ + CITY_BLOCK_SIZE / 2;
 
-        const rotateNoise = fixNoise(noise.noise(wx * 4, wz * 4));
-        const rotate = getRotationFromNoise(rotateNoise);
+        // The vantage building keeps a fixed (unrotated) orientation so the
+        // player spawns on a predictable, axis-aligned roof; towers jitter.
+        const rotate =
+          block.type === "vantage"
+            ? 0
+            : getRotationFromNoise(fixNoise(noise.noise(wx * 4, wz * 4)));
 
         buildings.push({
           modelKey: block.towerKey,
@@ -226,6 +253,10 @@ export function generateLayout(
           gi,
           gj,
         });
+
+        if (block.type === "vantage") {
+          vantage = { x: wx, z: wz, modelKey: block.towerKey, scaleY: 1 };
+        }
       } else {
         // ── Small buildings — 2×2 grid per block ─────────────────────────
         placeSmallBuildings(block.type, blockX, blockZ, gi, gj, noise, buildings);
@@ -252,6 +283,24 @@ export function generateLayout(
 
   const worldExtent = halfGrid * CELL_SIZE + CELL_SIZE;
 
+  // Spawn on the vantage building's roof when the template defines one ("X").
+  // The roof Y is resolved from the model bounding box at runtime; here we pass
+  // the model key + Y scale so FiniteCitySystem can compute it. Falls back to a
+  // street-level spawn at the south edge for layouts without a vantage block.
+  const spawn = vantage
+    ? {
+        x: vantage.x,
+        z: vantage.z,
+        rotationY: Math.PI,
+        roofModelKey: vantage.modelKey,
+        roofScaleY: vantage.scaleY,
+      }
+    : {
+        x: -ROAD_WIDTH / 2,
+        z: -(halfGrid * CELL_SIZE) + ROAD_WIDTH / 2,
+        rotationY: Math.PI,
+      };
+
   return {
     name: `Generated City (seed: ${seed}, ${gridSize}x${gridSize})`,
     bounds: {
@@ -260,11 +309,7 @@ export function generateLayout(
       minZ: -worldExtent,
       maxZ: worldExtent,
     },
-    spawn: {
-      x: -ROAD_WIDTH / 2,
-      z: -(halfGrid * CELL_SIZE) + ROAD_WIDTH / 2,
-      rotationY: Math.PI,
-    },
+    spawn,
     buildings,
     groundTiles,
     storefronts,

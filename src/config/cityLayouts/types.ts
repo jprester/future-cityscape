@@ -32,7 +32,20 @@ export type FiniteStorefrontPlacement = {
 export type FiniteCityLayout = {
   name: string;
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
-  spawn: { x: number; z: number; rotationY: number };
+  spawn: {
+    x: number;
+    z: number;
+    rotationY: number;
+    /** Explicit eye-height Y (world units). Takes precedence over roof* below. */
+    y?: number;
+    /**
+     * Rooftop spawn: model key + Y scale of the building to stand on. The roof
+     * height (eye Y) is resolved at runtime from the model's bounding box, since
+     * GLB geometry sizes aren't known at layout-generation time.
+     */
+    roofModelKey?: string;
+    roofScaleY?: number;
+  };
   buildings: FiniteBuildingPlacement[];
   megaBuildings?: FiniteMegaPlacement[];
   groundTiles: { x: number; z: number }[];
