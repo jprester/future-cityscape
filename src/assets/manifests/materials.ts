@@ -192,8 +192,12 @@ export function createMaterialFactories(): MaterialFactoryMap {
         shininess: 0,
         specular: 0x000000,
         blending: AdditiveBlending,
+        // Render in the transparent pass with depth testing so opaque buildings
+        // occlude the part of the beam behind them (additive is order-
+        // independent, so no depth WRITE — beams don't occlude each other).
         depthWrite: false,
-        transparent: false,
+        depthTest: true,
+        transparent: true,
       });
   }
 

@@ -120,8 +120,19 @@ export function CityBlockUpdateableVisuals({
     }
 
     if (updateable.kind === "spotlight") {
-      mesh.lookAt(camera.position);
-      mesh.rotation.x += Math.cos(updateable.rstep || 0) * 0.4;
+      // Vertical searchlight that gently sweeps. The spotlight mesh is an
+      // upright quad (base at the rooftop, shaft rising +Y). Billboard it around
+      // Y so it always faces the camera (never a full lookAt that tips it over
+      // to lie across the skyline), then spin it in-plane about its normal (the
+      // Z euler, applied before the Y yaw) so the shaft leans side to side from
+      // its fixed base — a real searchlight sweep. The lean is small and grows
+      // with height, so the moving part is high in open sky, not across the
+      // buildings. Two out-of-phase sines make the motion feel non-mechanical.
+      const dx = camera.position.x - mesh.position.x;
+      const dz = camera.position.z - mesh.position.z;
+      const r = updateable.rstep || 0;
+      const sweep = (Math.sin(r) * 0.7 + Math.sin(r * 1.7 + 1.3) * 0.3) * 0.14;
+      mesh.rotation.set(0, Math.atan2(dx, dz), sweep);
     }
   }, 1);
 

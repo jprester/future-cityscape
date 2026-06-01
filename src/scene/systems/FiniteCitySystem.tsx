@@ -206,7 +206,11 @@ export function FiniteCitySystem() {
     return smokes;
   }, [layout, settings.worldSeed]);
 
-  // Generate spotlight/hologram visual states for industrial buildings (s_03)
+  // Generate searchlight beams. They sit at ROAD CROSSINGS (the gaps between
+  // blocks, which are always empty) at street level, so each beam rises out of
+  // the city canyon into the sky instead of out of a building roof. The beam is
+  // a tall, narrow shaft (non-uniform scale) so it reads against the skyline and
+  // roughly fits the road width; surrounding buildings occlude its lower part.
   const spotlightStates = useMemo(() => {
     if (!layout) return [];
     const spots: UpdateableVisualState[] = [];
@@ -221,25 +225,38 @@ export function FiniteCitySystem() {
       seed = (seed * 16807 + 0) % 2147483647;
       return (seed - 1) / 2147483646;
     };
-    for (const b of layout.buildings) {
-      if (!b.modelKey.startsWith("s_03_")) continue;
-      // ~25% of industrial buildings
-      if (seededRandom() > 0.25) continue;
-      const matKey = spotMats[Math.floor(seededRandom() * spotMats.length)];
-      const s = 10 + seededRandom() * 10;
-      const spot: UpdateableVisualState = {
-        isVisual: true,
-        kind: "spotlight",
-        modelKey: "spotlight",
-        matKey,
-        position: { x: b.x, y: 160 * b.scaleY, z: b.z },
-        scale: { x: s, y: s, z: s },
-        rstep: seededRandom() * 7,
-      };
-      spot.update = () => {
-        spot.rstep = (spot.rstep ?? 0) + 0.01;
-      };
-      spots.push(spot);
+
+    // Road-crossing lattice: block centers sit at x ≡ CITY_BLOCK_SIZE/2 (mod
+    // CELL), so road centers are half a cell further along.
+    const CELL = CITY_BLOCK_SIZE + ROAD_WIDTH;
+    const ROAD_PHASE = CITY_BLOCK_SIZE + ROAD_WIDTH / 2;
+    const { minX, maxX, minZ, maxZ } = layout.bounds;
+    const firstRoad = (v: number) =>
+      Math.ceil((v - ROAD_PHASE) / CELL) * CELL + ROAD_PHASE;
+
+    for (let x = firstRoad(minX); x <= maxX; x += CELL) {
+      for (let z = firstRoad(minZ); z <= maxZ; z += CELL) {
+        // ~7% of road crossings get a beam.
+        if (seededRandom() > 0.07) continue;
+        const matKey = spotMats[Math.floor(seededRandom() * spotMats.length)];
+        const w = 5 + seededRandom() * 4; // width scale (≈20–36 u, ~road width)
+        const h = 14 + seededRandom() * 8; // height scale (≈700–1100 u shaft)
+        const spot: UpdateableVisualState = {
+          isVisual: true,
+          kind: "spotlight",
+          modelKey: "spotlight",
+          matKey,
+          position: { x, y: 0, z }, // base at street level, in the road gap
+          scale: { x: w, y: h, z: w },
+          rstep: seededRandom() * 7,
+        };
+        spot.update = () => {
+          // Drives the searchlight sweep (see CityBlockUpdateableVisuals).
+          // ~0.018 rad/frame → a gentle few-second sweep cycle.
+          spot.rstep = (spot.rstep ?? 0) + 0.018;
+        };
+        spots.push(spot);
+      }
     }
     return spots;
   }, [layout, settings.worldSeed]);
