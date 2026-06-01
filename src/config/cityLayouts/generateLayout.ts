@@ -12,6 +12,7 @@ import {
 } from "../buildingRegistry";
 import type { BuildingVariant } from "../buildingRegistry";
 import { CITY_BLOCK_SIZE, ROAD_WIDTH } from "../world";
+import { HUMAN_EYE_HEIGHT_UNITS } from "../scale";
 import type {
   FiniteCityLayout,
   FiniteBuildingPlacement,
@@ -69,10 +70,18 @@ const SMALL_BUILDING_WINDOW_SCALE = 1.08;
 // mid-rise skyscrapers (S), and finally a tall ring of towers (T) forming the
 // distant, fog-shrouded skyline on every side.
 
-// The center vantage building the player stands on. A flat-topped, mid-sized
-// skyscraper so the surrounding towers read as taller and the player can see
-// out over the cardinal-facing skyscrapers into the tower forest beyond.
-const VANTAGE_MODEL = "skyscraper_06";
+// The center vantage the player stands on. It is NOT a GLB building anymore:
+// detailed skyscraper roofs taper and have uneven tops, which made the
+// edge-blocking unreliable (the player kept walking off the roof). Instead the
+// vantage is a simple flat-topped box tower built procedurally (see the
+// FiniteCityVantage component) — a guaranteed-flat roof with an exact footprint
+// so the player is stopped cleanly at the ledge. The player only ever sees the
+// roof, so the shaft below stays a plain rectangle.
+//
+//   roofY = top/roof surface height (world units); ~170 m at 1.6 u/m.
+const VANTAGE_ROOF_Y = 272;
+const VANTAGE_WIDTH = 56; // X footprint (~35 m)
+const VANTAGE_DEPTH = 52; // Z footprint (~32.5 m)
 
 // One entry per distinct model file (the registry has a few skyscraper variants
 // pointing at the same GLB). Towers and skyscrapers are placed at most once each
@@ -91,9 +100,15 @@ function dedupeByModel(variants: BuildingVariant[]): string[] {
   return keys;
 }
 
+// Kept out of the skyscraper pool so the skyline keeps its authored 11-model
+// spread (the pool was sized to the 11 "S" template cells). It used to be the
+// GLB vantage building; the vantage is now a procedural box, so this model is
+// simply unused — reserved here to avoid disturbing the existing skyline.
+const RESERVED_SKYSCRAPER = "skyscraper_06";
+
 const TOWER_POOL = dedupeByModel(NEW_TOWER_SERIES.variants);
 const SKYSCRAPER_POOL = dedupeByModel(SKYSCRAPER_SERIES.variants).filter(
-  (key) => key !== VANTAGE_MODEL,
+  (key) => key !== RESERVED_SKYSCRAPER,
 );
 
 // Tight, dense downtown so the skyline reads full from the roof: a mixed (m)
@@ -135,7 +150,7 @@ type BlockType =
 
 type ParsedBlock = {
   type: BlockType;
-  towerKey?: string; // set for tower / vantage blocks
+  towerKey?: string; // set for tower blocks (the vantage is procedural — no key)
 };
 
 function warnExhausted(kind: string, ch: string): void {
@@ -175,7 +190,7 @@ function parseTemplate(template: string): ParsedBlock[][] {
         case ".":
           return { type: "empty" };
         case "X":
-          return { type: "vantage", towerKey: VANTAGE_MODEL };
+          return { type: "vantage" };
         case "r":
           return { type: "residential" };
         case "c":
@@ -245,10 +260,9 @@ export function generateLayout(
   const halfGrid = Math.floor(gridSize / 2);
 
   // Captured when the vantage ("X") block is placed, so the player can spawn on
-  // its roof. The roof height is resolved at runtime from the model's bounding
-  // box (see FiniteCitySystem), so we only need its position + Y scale here.
-  let vantage: { x: number; z: number; modelKey: string; scaleY: number } | null =
-    null;
+  // its roof. The vantage is a procedural box tower (no GLB), so we just record
+  // its center + fixed dimensions; FiniteCitySystem builds + collides it.
+  let vantage: { x: number; z: number } | null = null;
 
   for (let gj = 0; gj < gridSize; gj++) {
     const row = grid[gj];
@@ -271,20 +285,22 @@ export function generateLayout(
         continue;
       }
 
-      if (
-        (block.type === "tower" || block.type === "vantage") &&
-        block.towerKey
-      ) {
-        // ── Tower / vantage ──────────────────────────────────────────────
+      if (block.type === "vantage") {
+        // ── Vantage ──────────────────────────────────────────────────────
+        // No GLB building: the perch is a procedural flat-topped box tower
+        // (built + collided in FiniteCitySystem). Just record its center.
+        vantage = {
+          x: blockX + CITY_BLOCK_SIZE / 2,
+          z: blockZ + CITY_BLOCK_SIZE / 2,
+        };
+      } else if (block.type === "tower" && block.towerKey) {
+        // ── Tower ────────────────────────────────────────────────────────
         const wx = blockX + CITY_BLOCK_SIZE / 2;
         const wz = blockZ + CITY_BLOCK_SIZE / 2;
 
-        // The vantage building keeps a fixed (unrotated) orientation so the
-        // player spawns on a predictable, axis-aligned roof; towers jitter.
-        const rotate =
-          block.type === "vantage"
-            ? 0
-            : getRotationFromNoise(fixNoise(noise.noise(wx * 4, wz * 4)));
+        const rotate = getRotationFromNoise(
+          fixNoise(noise.noise(wx * 4, wz * 4)),
+        );
 
         buildings.push({
           modelKey: block.towerKey,
@@ -298,10 +314,6 @@ export function generateLayout(
           gi,
           gj,
         });
-
-        if (block.type === "vantage") {
-          vantage = { x: wx, z: wz, modelKey: block.towerKey, scaleY: 1 };
-        }
       } else {
         // ── Small buildings — 2×2 grid per block ─────────────────────────
         placeSmallBuildings(block.type, blockX, blockZ, gi, gj, noise, buildings);
@@ -328,17 +340,16 @@ export function generateLayout(
 
   const worldExtent = halfGrid * CELL_SIZE + CELL_SIZE;
 
-  // Spawn on the vantage building's roof when the template defines one ("X").
-  // The roof Y is resolved from the model bounding box at runtime; here we pass
-  // the model key + Y scale so FiniteCitySystem can compute it. Falls back to a
-  // street-level spawn at the south edge for layouts without a vantage block.
+  // Spawn on the procedural vantage roof when the template defines one ("X").
+  // The roof Y is a fixed constant (the box's flat top), so eye height is known
+  // here — no runtime model lookup. Falls back to a street-level spawn at the
+  // south edge for layouts without a vantage block.
   const spawn = vantage
     ? {
         x: vantage.x,
         z: vantage.z,
         rotationY: Math.PI,
-        roofModelKey: vantage.modelKey,
-        roofScaleY: vantage.scaleY,
+        y: VANTAGE_ROOF_Y + HUMAN_EYE_HEIGHT_UNITS,
       }
     : {
         x: -ROAD_WIDTH / 2,
@@ -355,6 +366,15 @@ export function generateLayout(
       maxZ: worldExtent,
     },
     spawn,
+    vantage: vantage
+      ? {
+          x: vantage.x,
+          z: vantage.z,
+          width: VANTAGE_WIDTH,
+          depth: VANTAGE_DEPTH,
+          roofY: VANTAGE_ROOF_Y,
+        }
+      : undefined,
     buildings,
     groundTiles,
     storefronts,

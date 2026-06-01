@@ -64,10 +64,25 @@ export type RuntimePlayer = {
   soundCityAmbient?: ThreeAudio;
 };
 
-export type RuntimeCollider = {
-  enabled: boolean;
-  add: (mesh: import("three").Mesh) => void;
-  remove: (uuid: string) => void;
+/**
+ * Rapier-backed player collision (see classes/PhysicsWorld.js). A kinematic
+ * capsule + character controller live inside; the scene registers static box
+ * colliders (rooftop floor/walls/props) and sets the spawn eye position. Calls
+ * made before the WASM finishes loading are queued until `ready` flips true.
+ */
+export type RuntimePhysics = {
+  ready: boolean;
+  addStaticBox: (
+    id: string,
+    hx: number,
+    hy: number,
+    hz: number,
+    x: number,
+    y: number,
+    z: number,
+  ) => void;
+  removeStatic: (id: string) => void;
+  setEye: (eye: Vector3Like) => void;
 };
 
 export type RuntimeRadio = {
@@ -119,7 +134,7 @@ export type GameRuntime = {
   assets?: RuntimeAssets;
   player: RuntimePlayer;
   playerController: PlayerController;
-  collider: RuntimeCollider;
+  physics?: RuntimePhysics;
   cityBlockSize: number;
   roadWidth: number;
   cityBlockNoise?: NoiseRuntime;

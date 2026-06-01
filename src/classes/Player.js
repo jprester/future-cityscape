@@ -66,21 +66,20 @@ class Player {
     this.noise_shake = new Perlin();
     this.noise_shake.noiseDetail(8, 0.5);
 
+    // The velocity model (accel/decel/max-speed) still produces the per-frame
+    // horizontal displacement; collision + gravity now live in the Rapier
+    // character controller (see PhysicsWorld + Player.update).
     this.velocity = new Vector3();
     this.move_max_speed = 0;
     this.move_max_speed_current = 0;
-
-    // gravity — the player is a grounded human, not a free-flying camera.
-    // `gravity` is a per-frame (60fps) downward acceleration; `velocity_y` is
-    // the resulting vertical speed. Reused scratch vectors keep the per-frame
-    // ground raycast allocation-free.
-    this.gravity = 0.3;
-    this.velocity_y = 0;
-    this._groundOrigin = new Vector3();
-    this._groundDir = new Vector3(0, -1, 0);
   }
 
   update(delta = 1 / 60) {
+    // Clamp delta so a frame hitch / backgrounded tab (huge delta) can't fling
+    // the player or overshoot gravity through a collider — cap the simulated
+    // step at ~1/20 s.
+    if (delta > 0.05) delta = 0.05;
+
     // Normalized frame factor: 1.0 at 60fps. Linear per-frame increments are
     // multiplied by `f`; exponential smoothing uses smoothingFactor(rate, f).
     // Mouse-look is driven by physical mouse deltas, so it stays unscaled.
@@ -182,83 +181,19 @@ class Player {
       this.move_max_speed_current -= this.move_accel * f;
     this.velocity.clampLength(0, this.move_max_speed_current);
 
-    /*--- UPDATE POSITION (HORIZONTAL) with EDGE BLOCKING ---*/
+    /*--- UPDATE POSITION via RAPIER CHARACTER CONTROLLER ---*/
 
-    // Realistic human: a constant ground-level walking/running pace (the old
-    // altitude-based speed scaling went with flight, which is now gone).
-    //
-    // Edge blocking ("rooftop parapet"): while the player is standing on a
-    // surface, a step is only taken if the ground at the destination isn't far
-    // below the current surface — so they stop at the real edge of the roof and
-    // can't walk off into thin air. This follows the actual roof shape (a box
-    // clamp from the model's bounding box failed: the tower tapers, so its bbox
-    // footprint is wider than the walkable roof). Tested per-axis so the player
-    // slides along an edge rather than sticking. While airborne, movement is
-    // free (air control + the spawn settling onto the roof).
-    const collider = this.game && this.game.collider;
-    const colliderReady =
-      collider && collider.enabled && collider.meshes.length > 0;
-
-    const probeY = this.body.position.y + 2;
-    const curSurfaceY = colliderReady
-      ? this.sampleGroundHeight(
-          this.body.position.x,
-          this.body.position.z,
-          probeY,
-        )
-      : 0;
-    const grounded =
-      colliderReady &&
-      this.body.position.y <= curSurfaceY + this.player_height + 0.5;
-
-    const newX = this.body.position.x + this.velocity.x * f;
-    const newZ = this.body.position.z + this.velocity.z * f;
-
-    if (!grounded) {
-      this.body.position.x = newX;
-      this.body.position.z = newZ;
-    } else {
-      // Allow small step-downs (curbs, rooftop details); block big drops (edges).
-      const MAX_STEP_DOWN = 8;
-      if (
-        this.sampleGroundHeight(newX, this.body.position.z, probeY) >=
-        curSurfaceY - MAX_STEP_DOWN
-      ) {
-        this.body.position.x = newX;
-      }
-      if (
-        this.sampleGroundHeight(this.body.position.x, newZ, probeY) >=
-        curSurfaceY - MAX_STEP_DOWN
-      ) {
-        this.body.position.z = newZ;
-      }
-    }
-
-    /*--- GRAVITY + STAND ON SURFACE ---*/
-
-    // The player rests on whatever surface is directly below — a building roof,
-    // or the street (y = 0) as the world floor — and falls under gravity if
-    // somehow off a surface. Flight (R/F altitude) has been removed entirely.
-    if (colliderReady) {
-      const surfaceY = this.sampleGroundHeight(
-        this.body.position.x,
-        this.body.position.z,
-        this.body.position.y + 2,
-      );
-      const targetEyeY = surfaceY + this.player_height;
-
-      if (this.body.position.y > targetEyeY + 0.01) {
-        // Airborne — accelerate downward, then land on the surface.
-        this.velocity_y -= this.gravity * f;
-        this.body.position.y += this.velocity_y * f;
-        if (this.body.position.y <= targetEyeY) {
-          this.body.position.y = targetEyeY;
-          this.velocity_y = 0;
-        }
-      } else {
-        // Grounded — stick to the surface (also steps up small rises).
-        this.body.position.y = targetEyeY;
-        this.velocity_y = 0;
+    // Collision is handled by Rapier: the per-frame velocity (above) becomes a
+    // desired horizontal displacement, which the kinematic capsule sweeps
+    // against the rooftop's fixed colliders (floor + edge walls + props). That
+    // resolves edges/walls/props in one robust step — gravity, ground-snapping,
+    // and "can't walk off the roof" all fall out of the controller. The eye
+    // position it returns drives the camera (set below / in Player setup).
+    const physics = this.game && this.game.physics;
+    if (physics && physics.ready) {
+      const eye = physics.move(this.velocity.x * f, this.velocity.z * f, delta);
+      if (eye) {
+        this.body.position.set(eye.x, eye.y, eye.z);
       }
     }
 
@@ -271,21 +206,6 @@ class Player {
       );
     if (this.soundCityAmbient)
       this.soundCityAmbient.setVolume(1 - this.body.position.y / 800);
-  }
-
-  // Height of the nearest collision surface directly below (x, z), looking down
-  // from `fromY`. Buildings (incl. the rooftop the player stands on) are
-  // registered with the collider; the street is not, so we fall back to y = 0
-  // as the world floor when the downward ray hits nothing.
-  sampleGroundHeight(x, z, fromY) {
-    const collider = this.game && this.game.collider;
-    if (!collider) return 0;
-    this._groundOrigin.set(x, fromY, z);
-    const hits = collider.raycast(this._groundOrigin, this._groundDir);
-    if (hits && hits.length > 0) {
-      return Math.max(hits[0].point.y, 0);
-    }
-    return 0;
   }
 
   // window resize callback

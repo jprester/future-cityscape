@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Mesh,
-  PlaneGeometry,
-  MeshBasicMaterial,
-  DoubleSide,
+  BoxGeometry,
+  MeshStandardMaterial,
   RepeatWrapping,
 } from "three";
 import type { Texture } from "three";
@@ -29,7 +28,6 @@ import {
   resolveManualWallAds,
   resolveProceduralWallAds,
 } from "../wallAds";
-
 
 type GroundLight = {
   x: number;
@@ -87,7 +85,9 @@ export function FiniteCitySystem() {
         floors: Math.round(heightMeters / 3.5),
       });
     }
-    rows.sort((a, b) => (a.heightMeters as number) - (b.heightMeters as number));
+    rows.sort(
+      (a, b) => (a.heightMeters as number) - (b.heightMeters as number),
+    );
     // eslint-disable-next-line no-console
     console.log(`[scale audit] ${UNITS_PER_METER} units = 1 m`);
     // eslint-disable-next-line no-console
@@ -153,6 +153,9 @@ export function FiniteCitySystem() {
       game.player.body.position.z = z;
       if (eyeY != null) {
         game.player.body.position.y = eyeY;
+        // Place the Rapier character capsule at the spawn (queued until the
+        // physics WASM is ready); the controller drives the body from here on.
+        game.physics?.setEye({ x, y: eyeY, z });
       }
       if (game.player.camera_target) {
         game.player.camera_target.rotation.y = rotationY;
@@ -319,8 +322,11 @@ export function FiniteCitySystem() {
             />
           </group>
         ))}
-      <FiniteCityCollision layout={layout} game={gameRef.current} />
-      <FiniteCityBoundary layout={layout} game={gameRef.current} />
+      <FiniteCityVantage
+        layout={layout}
+        game={gameRef.current}
+        visibility={visibility}
+      />
     </>
   );
 }
@@ -509,131 +515,218 @@ function FiniteCityGround({
   );
 }
 
-// ─── Collision Registration ───────────────────────────────────────────────────
+// ─── Rooftop Vantage ───────────────────────────────────────────────────────────
 
-function FiniteCityCollision({
+// The player's perch. A simple, fully procedural flat-topped box tower (no GLB)
+// so the roof is guaranteed flat and the footprint exact. The shaft is a plain
+// rectangle (only ever seen from the roof edge); the roof gets a low knee-high
+// parapet ledge + a few cubic structures.
+//
+// Collision is handled by Rapier (see the static-collider effect below):
+// the visible shaft/parapet/cubes are purely cosmetic — the player is stood up
+// and contained by invisible floor/wall/prop colliders.
+const PARAPET_HEIGHT = 0.8; // ~0.5 m — knee-high ledge, stays well clear of the view
+const PARAPET_THICKNESS = 1.5;
+
+function FiniteCityVantage({
   layout,
   game,
+  visibility,
 }: {
   layout: FiniteCityLayout;
   game: GameRuntime | null;
+  visibility: { buildings: boolean };
 }) {
-  const colliderMeshesRef = useRef<Mesh[]>([]);
+  const v = layout.vantage;
 
+  // Rooftop structures (cubic shapes), defined once so the visible mesh and the
+  // collision box stay in sync — the player is blocked from walking into them.
+  const structures = useMemo(() => {
+    if (!v) return [];
+    const { x, z, width, depth, roofY } = v;
+    return [
+      // HVAC block, far corner
+      {
+        w: 12,
+        h: 6,
+        d: 9,
+        cx: x + width / 2 - 11,
+        cy: roofY + 3,
+        cz: z - depth / 2 + 10,
+      },
+      // Vent stack, opposite corner
+      {
+        w: 4,
+        h: 11,
+        d: 4,
+        cx: x - width / 2 + 10,
+        cy: roofY + 5.5,
+        cz: z + depth / 2 - 10,
+      },
+    ];
+  }, [v]);
+
+  // Visible platform: shaft + parapet rails + rooftop structures.
+  const meshes = useMemo(() => {
+    if (!v) return [];
+    const { x, z, width, depth, roofY } = v;
+    const out: Mesh[] = [];
+
+    // Shaft — top face at roofY is the roof surface. Player only sees this from
+    // the roof edge, so a plain dark slab is fine.
+    const shaftMat = new MeshStandardMaterial({
+      color: "#14141d",
+      roughness: 0.9,
+      metalness: 0.1,
+      emissive: "#0a1622",
+      emissiveIntensity: 0.25,
+    });
+    const shaft = new Mesh(new BoxGeometry(width, roofY, depth), shaftMat);
+    shaft.position.set(x, roofY / 2, z);
+    out.push(shaft);
+
+    // Parapet — a low knee-high ledge ringing the roof edge.
+    const parapetMat = new MeshStandardMaterial({
+      color: "#23232e",
+      roughness: 0.8,
+      metalness: 0.2,
+    });
+    const py = roofY + PARAPET_HEIGHT / 2;
+    const railNS = new BoxGeometry(width, PARAPET_HEIGHT, PARAPET_THICKNESS);
+    const railEW = new BoxGeometry(PARAPET_THICKNESS, PARAPET_HEIGHT, depth);
+    const offZ = depth / 2 - PARAPET_THICKNESS / 2;
+    const offX = width / 2 - PARAPET_THICKNESS / 2;
+    for (const sz of [offZ, -offZ]) {
+      const rail = new Mesh(railNS, parapetMat);
+      rail.position.set(x, py, z + sz);
+      out.push(rail);
+    }
+    for (const sx of [offX, -offX]) {
+      const rail = new Mesh(railEW, parapetMat);
+      rail.position.set(x + sx, py, z);
+      out.push(rail);
+    }
+
+    // Rooftop structures — a couple of cubic shapes for visual interest, tucked
+    // into corners away from the (centered) spawn.
+    const structMat = new MeshStandardMaterial({
+      color: "#3a3a48",
+      roughness: 0.6,
+      metalness: 0.45,
+    });
+    for (const s of structures) {
+      const m = new Mesh(new BoxGeometry(s.w, s.h, s.d), structMat);
+      m.position.set(s.cx, s.cy, s.cz);
+      out.push(m);
+    }
+
+    return out;
+  }, [v, structures]);
+
+  // Dispose geometries/materials when the platform is rebuilt/unmounted.
   useEffect(() => {
-    if (!game?.assets?.loaded || !game.collider) return;
-
-    const meshes: Mesh[] = [];
-
-    // Building collision meshes
-    for (const b of layout.buildings) {
-      const geometry = game.assets!.getModel(b.modelKey);
-      if (!geometry) continue;
-      const material = game.assets!.getMaterial(b.materialKey);
-      const mesh = new Mesh(geometry, material);
-      mesh.position.set(b.x, 0, b.z);
-      mesh.scale.set(b.scaleX, b.scaleY, b.scaleZ);
-      mesh.rotation.y = b.rotationY;
-      mesh.updateMatrixWorld(true);
-      game.collider.add(mesh);
-      meshes.push(mesh);
-    }
-
-    // Storefront collision meshes
-    for (const sf of layout.storefronts) {
-      const geometry = game.assets!.getModel("storefronts");
-      if (!geometry) continue;
-      const material = game.assets!.getMaterial(sf.materialKey);
-      const mesh = new Mesh(geometry, material);
-      mesh.position.set(sf.x, 0, sf.z);
-      mesh.updateMatrixWorld(true);
-      game.collider.add(mesh);
-      meshes.push(mesh);
-    }
-
-    colliderMeshesRef.current = meshes;
-
     return () => {
-      for (const mesh of colliderMeshesRef.current) {
-        game.collider.remove(mesh.uuid);
+      const geos = new Set<BoxGeometry>();
+      const mats = new Set<MeshStandardMaterial>();
+      for (const m of meshes) {
+        geos.add(m.geometry as BoxGeometry);
+        mats.add(m.material as MeshStandardMaterial);
       }
-      colliderMeshesRef.current = [];
+      geos.forEach((g) => g.dispose());
+      mats.forEach((m) => m.dispose());
     };
-  }, [layout, game?.assets?.loaded, game?.collider]);
+  }, [meshes]);
 
-  return null;
-}
-
-// ─── Boundary Walls ───────────────────────────────────────────────────────────
-
-function FiniteCityBoundary({
-  layout,
-  game,
-}: {
-  layout: FiniteCityLayout;
-  game: GameRuntime | null;
-}) {
-  const wallMeshesRef = useRef<Mesh[]>([]);
-
+  // Rapier static colliders for the vantage (the player's kinematic capsule is
+  // swept against these by the character controller):
+  //   • Floor — a flat box whose top is the roof surface; the capsule stands on it.
+  //   • Edge walls — 4 invisible walls just outside the footprint, taller than
+  //     the capsule, so the player can't walk off the roof. The visible parapet
+  //     stays knee-high; these are the actual containment.
+  //   • Props — a box per HVAC/vent so the capsule is stopped at them.
   useEffect(() => {
-    if (!game?.collider) return;
+    const physics = game?.physics;
+    if (!v || !physics) return;
+    const { x, z, width, depth, roofY } = v;
+    const hw = width / 2;
+    const hd = depth / 2;
+    const WALL_HALF_H = 1.6; // ~2 m tall — capsule can't autostep over it
+    const WALL_HALF_T = 0.5; // 1 u thick, sits just outside the footprint edge
+    const wallY = roofY + WALL_HALF_H;
 
-    const { minX, maxX, minZ, maxZ } = layout.bounds;
-    const wallHeight = 1000;
-    const xSpan = maxX - minX;
-    const zSpan = maxZ - minZ;
-    const centerX = (minX + maxX) / 2;
-    const centerZ = (minZ + maxZ) / 2;
+    const ids: string[] = [];
+    const add = (
+      id: string,
+      hx: number,
+      hy: number,
+      hz: number,
+      cx: number,
+      cy: number,
+      cz: number,
+    ) => {
+      physics.addStaticBox(id, hx, hy, hz, cx, cy, cz);
+      ids.push(id);
+    };
 
-    const invisMat = new MeshBasicMaterial({
-      visible: false,
-      side: DoubleSide,
+    // Floor: top face at roofY.
+    add("vantage-floor", hw, 2, hd, x, roofY - 2, z);
+    // Edge walls (inner face flush with the footprint edge).
+    add("vantage-wall-n", hw + WALL_HALF_T, WALL_HALF_H, WALL_HALF_T, x, wallY, z + hd + WALL_HALF_T);
+    add("vantage-wall-s", hw + WALL_HALF_T, WALL_HALF_H, WALL_HALF_T, x, wallY, z - hd - WALL_HALF_T);
+    add("vantage-wall-e", WALL_HALF_T, WALL_HALF_H, hd + WALL_HALF_T, x + hw + WALL_HALF_T, wallY, z);
+    add("vantage-wall-w", WALL_HALF_T, WALL_HALF_H, hd + WALL_HALF_T, x - hw - WALL_HALF_T, wallY, z);
+    // Props. The collider footprint is grown horizontally so the player is
+    // stopped a bit back from the visible surface — otherwise they stop within
+    // the camera near plane (1 u) of the box face and the renderer clips it
+    // away (you "see through" the HVAC/vent). Height is left at the visible
+    // size. Margin = near plane (1) − capsule radius (0.6) + slack.
+    const PROP_MARGIN = 1.0;
+    structures.forEach((s, i) => {
+      add(
+        `vantage-prop-${i}`,
+        s.w / 2 + PROP_MARGIN,
+        s.h / 2,
+        s.d / 2 + PROP_MARGIN,
+        s.cx,
+        s.cy,
+        s.cz,
+      );
     });
 
-    const walls: Mesh[] = [];
-
-    // North wall (maxZ)
-    const northGeo = new PlaneGeometry(xSpan, wallHeight);
-    const northWall = new Mesh(northGeo, invisMat);
-    northWall.position.set(centerX, wallHeight / 2, maxZ);
-    northWall.updateMatrixWorld(true);
-    walls.push(northWall);
-
-    // South wall (minZ)
-    const southGeo = new PlaneGeometry(xSpan, wallHeight);
-    const southWall = new Mesh(southGeo, invisMat);
-    southWall.position.set(centerX, wallHeight / 2, minZ);
-    southWall.updateMatrixWorld(true);
-    walls.push(southWall);
-
-    // East wall (maxX)
-    const eastGeo = new PlaneGeometry(zSpan, wallHeight);
-    const eastWall = new Mesh(eastGeo, invisMat);
-    eastWall.position.set(maxX, wallHeight / 2, centerZ);
-    eastWall.rotation.y = Math.PI / 2;
-    eastWall.updateMatrixWorld(true);
-    walls.push(eastWall);
-
-    // West wall (minX)
-    const westGeo = new PlaneGeometry(zSpan, wallHeight);
-    const westWall = new Mesh(westGeo, invisMat);
-    westWall.position.set(minX, wallHeight / 2, centerZ);
-    westWall.rotation.y = Math.PI / 2;
-    westWall.updateMatrixWorld(true);
-    walls.push(westWall);
-
-    for (const wall of walls) {
-      game.collider.add(wall);
-    }
-    wallMeshesRef.current = walls;
+    // Seat the capsule on the roof now that the floor exists — guards against a
+    // spawn applied before these colliders were registered (the character would
+    // otherwise fall past the not-yet-present floor).
+    physics.setEye({ x, y: roofY + HUMAN_EYE_HEIGHT_UNITS, z });
 
     return () => {
-      for (const wall of wallMeshesRef.current) {
-        game.collider.remove(wall.uuid);
-      }
-      wallMeshesRef.current = [];
+      for (const id of ids) physics.removeStatic(id);
     };
-  }, [layout, game?.collider]);
+  }, [v, structures, game?.physics]);
 
-  return null;
+  if (!v || !visibility.buildings) return null;
+  return (
+    <>
+      {meshes.map((mesh) => (
+        <primitive key={mesh.uuid} object={mesh} />
+      ))}
+      {/* Rooftop lighting so the deck reads against the night skyline: a warm
+          key light high over the center plus a cooler fill toward the corner
+          structures. (Local point lights — kept off the rest of the city.) */}
+      <pointLight
+        position={[v.x, v.roofY + 24, v.z]}
+        color="#ffe6c0"
+        intensity={1200}
+        distance={190}
+        decay={2}
+      />
+      {/* <pointLight
+        position={[v.x - v.width / 4, v.roofY + 10, v.z + v.depth / 4]}
+        color="#4a7bff"
+        intensity={600}
+        distance={100}
+        decay={2}
+      /> */}
+    </>
+  );
 }
+

@@ -46,6 +46,21 @@ export type FiniteCityLayout = {
     roofModelKey?: string;
     roofScaleY?: number;
   };
+  /**
+   * Procedural rooftop vantage platform (the perch the player spawns on). A
+   * simple flat-topped box tower built in code instead of a detailed GLB, so
+   * its roof is guaranteed flat and its footprint exact — that makes the
+   * edge-blocking in Player.update reliable (a tapered GLB roof let the player
+   * walk off). Rendered + collided by FiniteCitySystem's vantage component.
+   */
+  vantage?: {
+    x: number;
+    z: number;
+    width: number;
+    depth: number;
+    /** World-unit Y of the flat roof surface (top of the box). */
+    roofY: number;
+  };
   buildings: FiniteBuildingPlacement[];
   megaBuildings?: FiniteMegaPlacement[];
   groundTiles: { x: number; z: number }[];
