@@ -182,24 +182,64 @@ class Player {
       this.move_max_speed_current -= this.move_accel * f;
     this.velocity.clampLength(0, this.move_max_speed_current);
 
-    /*--- UPDATE POSITION (HORIZONTAL) ---*/
+    /*--- UPDATE POSITION (HORIZONTAL) with EDGE BLOCKING ---*/
 
     // Realistic human: a constant ground-level walking/running pace (the old
     // altitude-based speed scaling went with flight, which is now gone).
-    this.body.position.x += this.velocity.x * f;
-    this.body.position.z += this.velocity.z * f;
+    //
+    // Edge blocking ("rooftop parapet"): while the player is standing on a
+    // surface, a step is only taken if the ground at the destination isn't far
+    // below the current surface — so they stop at the real edge of the roof and
+    // can't walk off into thin air. This follows the actual roof shape (a box
+    // clamp from the model's bounding box failed: the tower tapers, so its bbox
+    // footprint is wider than the walkable roof). Tested per-axis so the player
+    // slides along an edge rather than sticking. While airborne, movement is
+    // free (air control + the spawn settling onto the roof).
+    const collider = this.game && this.game.collider;
+    const colliderReady =
+      collider && collider.enabled && collider.meshes.length > 0;
+
+    const probeY = this.body.position.y + 2;
+    const curSurfaceY = colliderReady
+      ? this.sampleGroundHeight(
+          this.body.position.x,
+          this.body.position.z,
+          probeY,
+        )
+      : 0;
+    const grounded =
+      colliderReady &&
+      this.body.position.y <= curSurfaceY + this.player_height + 0.5;
+
+    const newX = this.body.position.x + this.velocity.x * f;
+    const newZ = this.body.position.z + this.velocity.z * f;
+
+    if (!grounded) {
+      this.body.position.x = newX;
+      this.body.position.z = newZ;
+    } else {
+      // Allow small step-downs (curbs, rooftop details); block big drops (edges).
+      const MAX_STEP_DOWN = 8;
+      if (
+        this.sampleGroundHeight(newX, this.body.position.z, probeY) >=
+        curSurfaceY - MAX_STEP_DOWN
+      ) {
+        this.body.position.x = newX;
+      }
+      if (
+        this.sampleGroundHeight(this.body.position.x, newZ, probeY) >=
+        curSurfaceY - MAX_STEP_DOWN
+      ) {
+        this.body.position.z = newZ;
+      }
+    }
 
     /*--- GRAVITY + STAND ON SURFACE ---*/
 
     // The player rests on whatever surface is directly below — a building roof,
     // or the street (y = 0) as the world floor — and falls under gravity if
-    // they step off an edge. Flight (R/F altitude) has been removed entirely.
-    //
-    // Gated on the collider being populated so the spawn position (e.g. a
-    // rooftop) isn't yanked down to the street before the city's collision
-    // meshes have loaded.
-    const collider = this.game && this.game.collider;
-    if (collider && collider.enabled && collider.meshes.length > 0) {
+    // somehow off a surface. Flight (R/F altitude) has been removed entirely.
+    if (colliderReady) {
       const surfaceY = this.sampleGroundHeight(
         this.body.position.x,
         this.body.position.z,

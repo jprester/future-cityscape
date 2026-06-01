@@ -5,7 +5,12 @@ import {
   pickFromNoise,
   getRotationFromNoise,
 } from "../../utils";
-import { NEW_TOWER_SERIES } from "../buildingRegistry";
+import {
+  NEW_TOWER_SERIES,
+  SKYSCRAPER_SERIES,
+  getEmbeddedMaterialKeys,
+} from "../buildingRegistry";
+import type { BuildingVariant } from "../buildingRegistry";
 import { CITY_BLOCK_SIZE, ROAD_WIDTH } from "../world";
 import type {
   FiniteCityLayout,
@@ -16,6 +21,11 @@ import type {
 function fixNoise(noise: number): number {
   return clamp(mapRange(noise, 0.2, 0.75, 0, 0.9999), 0, 0.9999);
 }
+
+// Small-building models that ship with embedded GLB materials (e.g. the nicer
+// s_03_04–07 industrial buildings). These must use their "__embedded_{key}"
+// material — the shared OBJ texture material would render them wrong.
+const EMBEDDED_MODEL_KEYS = getEmbeddedMaterialKeys();
 
 function getBuildingMatKey(noise: number): string {
   const mats = [
@@ -45,50 +55,69 @@ const SMALL_BUILDING_WINDOW_SCALE = 1.08;
 //   c  = commercial  (s_02 series)
 //   i  = industrial  (s_03 series)
 //   m  = mixed — noise picks residential/commercial/industrial
-//   T  = tower — auto-assigns next tower variant from registry
+//   T  = tower — assigns the next UNUSED tower model (each placed once, no repeats)
 //   A-L = specific tower variant (A=tower_01, B=tower_02, ... L=tower_12)
-//   S  = unique skyscraper — auto-assigns from the list below
-//   1-4 = specific skyscraper (1=skyscraper_06, 2=skyscraper_09, 3=skyscraper_10, 4=skyscraper_11)
+//   S  = skyscraper — assigns the next UNUSED skyscraper model (each placed once)
+//   1-N = specific skyscraper from the de-duplicated pool (1-indexed)
 //   X  = rooftop vantage building (the player spawns on its roof, dead center)
 //
 // Grid reads top-to-bottom = north-to-south (gj 0..16).
 //
 // Layout intent ("rooftop view"): a mid-sized vantage tower sits dead center.
-// The player spawns on its roof and looks out over a dense, radial forest of
-// towers (T) that rings the vantage on all sides, fading through a skyscraper
-// belt (S) into lower commercial (c) and residential (r) blocks toward the
-// fog-shrouded edges — an impressive skyline in every direction.
-
-// Skyscrapers placed as unique buildings (like towers but mid-rise)
-const UNIQUE_SKYSCRAPERS = [
-  "skyscraper_06",
-  "skyscraper_09",
-  "skyscraper_10",
-  "skyscraper_11",
-  "skyscraper_08",
-];
+// Heights rise with distance to create depth — the player spawns on the roof
+// and looks out over a low foreground of commercial blocks (c), then a belt of
+// mid-rise skyscrapers (S), and finally a tall ring of towers (T) forming the
+// distant, fog-shrouded skyline on every side.
 
 // The center vantage building the player stands on. A flat-topped, mid-sized
 // skyscraper so the surrounding towers read as taller and the player can see
 // out over the cardinal-facing skyscrapers into the tower forest beyond.
 const VANTAGE_MODEL = "skyscraper_06";
 
+// One entry per distinct model file (the registry has a few skyscraper variants
+// pointing at the same GLB). Towers and skyscrapers are placed at most once each
+// — no repeats — so the "T"/"S" template cells draw from these de-duplicated
+// pools in order and never wrap. The vantage model is excluded from the
+// skyscraper pool so it never appears a second time elsewhere in the city.
+function dedupeByModel(variants: BuildingVariant[]): string[] {
+  const seen = new Set<string>();
+  const keys: string[] = [];
+  for (const v of variants) {
+    const id = v.source?.format === "glb" ? v.source.path : v.key;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    keys.push(v.key);
+  }
+  return keys;
+}
+
+const TOWER_POOL = dedupeByModel(NEW_TOWER_SERIES.variants);
+const SKYSCRAPER_POOL = dedupeByModel(SKYSCRAPER_SERIES.variants).filter(
+  (key) => key !== VANTAGE_MODEL,
+);
+
+// Tight, dense downtown so the skyline reads full from the roof: a mixed (m)
+// core fills the city — residential/commercial/industrial picked by noise, so
+// every small-building series (incl. the nicer s_03_04–07 GLBs) shows up — with
+// a close ring of 11 unique skyscrapers (S, ring 3) and 12 unique towers
+// (T, ring 4) as the dominant skyline. Residential (r) sits only on the outer
+// rings — the fog-edge outskirts. Each S/T is a distinct model, placed once.
 const CITY_TEMPLATE = `
 . . . . . . . . . . . . . . . . .
 . r r r r r r r r r r r r r r r .
-. r c c c c c c c c c c c c c r .
-. r c S S S S S S S S S S S c r .
-. r c S T T T T T T T T T S c r .
-. r c S T T T T T T T T T S c r .
-. r c S T T T T T T T T T S c r .
-. r c S T T T T S T T T T S c r .
-. r c S T T T S X S T T T S c r .
-. r c S T T T T S T T T T S c r .
-. r c S T T T T T T T T T S c r .
-. r c S T T T T T T T T T S c r .
-. r c S T T T T T T T T T S c r .
-. r c S S S S S S S S S S S c r .
-. r c c c c c c c c c c c c c r .
+. r r r r r r r r r r r r r r r .
+. r r m m m m m m m m m m m r r .
+. r r m T m T m m T m m T m r r .
+. r r m m S m S m m S m m m r r .
+. r r m m m m m m m m S T m r r .
+. r r m T S m m m m m m m m r r .
+. r r m m m m m X m m S m m r r .
+. r r m m S m m m m m m T m r r .
+. r r m T m m m m m m S m m r r .
+. r r m m S m m S m S m m m r r .
+. r r m T m m T m m T m T m r r .
+. r r m m m m m m m m m m m r r .
+. r r r r r r r r r r r r r r r .
 . r r r r r r r r r r r r r r r .
 . . . . . . . . . . . . . . . . .
 `;
@@ -109,19 +138,29 @@ type ParsedBlock = {
   towerKey?: string; // set for tower / vantage blocks
 };
 
-function parseTemplate(template: string): ParsedBlock[][] {
-  const towerVariants = NEW_TOWER_SERIES.variants.map((v) => v.key);
-  // Map A-L to specific tower variants
-  const specificTowerMap = new Map<string, string>();
-  for (let i = 0; i < towerVariants.length && i < 12; i++) {
-    specificTowerMap.set(String.fromCharCode(65 + i), towerVariants[i]);
+function warnExhausted(kind: string, ch: string): void {
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `CITY_TEMPLATE: more '${ch}' cells than unique ${kind} models; ` +
+        `extra ${kind} blocks left empty (each model is placed at most once).`,
+    );
   }
-  // Map 1-4 to specific unique skyscrapers
+}
+
+function parseTemplate(template: string): ParsedBlock[][] {
+  // Map A-L to specific tower models
+  const specificTowerMap = new Map<string, string>();
+  for (let i = 0; i < TOWER_POOL.length && i < 12; i++) {
+    specificTowerMap.set(String.fromCharCode(65 + i), TOWER_POOL[i]);
+  }
+  // Map 1-N to specific skyscraper models
   const specificSkyscraperMap = new Map<string, string>();
-  for (let i = 0; i < UNIQUE_SKYSCRAPERS.length; i++) {
-    specificSkyscraperMap.set(String(i + 1), UNIQUE_SKYSCRAPERS[i]);
+  for (let i = 0; i < SKYSCRAPER_POOL.length; i++) {
+    specificSkyscraperMap.set(String(i + 1), SKYSCRAPER_POOL[i]);
   }
 
+  // Each model is placed at most once — these indices never wrap.
   let autoTowerIndex = 0;
   let autoSkyscraperIndex = 0;
 
@@ -146,15 +185,21 @@ function parseTemplate(template: string): ParsedBlock[][] {
         case "m":
           return { type: "mixed" };
         case "T": {
-          const key = towerVariants[autoTowerIndex % towerVariants.length];
-          autoTowerIndex++;
-          return { type: "tower", towerKey: key };
+          if (autoTowerIndex >= TOWER_POOL.length) {
+            warnExhausted("tower", "T");
+            return { type: "empty" };
+          }
+          return { type: "tower", towerKey: TOWER_POOL[autoTowerIndex++] };
         }
         case "S": {
-          const key =
-            UNIQUE_SKYSCRAPERS[autoSkyscraperIndex % UNIQUE_SKYSCRAPERS.length];
-          autoSkyscraperIndex++;
-          return { type: "tower", towerKey: key };
+          if (autoSkyscraperIndex >= SKYSCRAPER_POOL.length) {
+            warnExhausted("skyscraper", "S");
+            return { type: "empty" };
+          }
+          return {
+            type: "tower",
+            towerKey: SKYSCRAPER_POOL[autoSkyscraperIndex++],
+          };
         }
         default: {
           // Check for specific tower letter (A-L)
@@ -355,8 +400,12 @@ function placeSmallBuildings(
           ? SMALL_BUILDING_WINDOW_SCALE
           : 1;
 
+      // GLB small buildings carry embedded materials; OBJ ones share a texture
+      // material picked by noise.
       const matNoise = fixNoise(noise.noise(wx * -3, wz * -3));
-      const matKey = getBuildingMatKey(matNoise);
+      const matKey = EMBEDDED_MODEL_KEYS.has(type)
+        ? `__embedded_${type}`
+        : getBuildingMatKey(matNoise);
 
       buildings.push({
         modelKey: type,
