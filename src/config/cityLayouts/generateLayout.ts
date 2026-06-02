@@ -78,8 +78,8 @@ const SMALL_BUILDING_WINDOW_SCALE = 1.08;
 // so the player is stopped cleanly at the ledge. The player only ever sees the
 // roof, so the shaft below stays a plain rectangle.
 //
-//   roofY = top/roof surface height (world units); ~170 m at 1.6 u/m.
-const VANTAGE_ROOF_Y = 272;
+//   roofY = top/roof surface height (world units); ~128 m at 1.6 u/m.
+const VANTAGE_ROOF_Y = 254;
 const VANTAGE_WIDTH = 56; // X footprint (~35 m)
 const VANTAGE_DEPTH = 52; // Z footprint (~32.5 m)
 
@@ -316,7 +316,15 @@ export function generateLayout(
         });
       } else {
         // ── Small buildings — 2×2 grid per block ─────────────────────────
-        placeSmallBuildings(block.type, blockX, blockZ, gi, gj, noise, buildings);
+        placeSmallBuildings(
+          block.type,
+          blockX,
+          blockZ,
+          gi,
+          gj,
+          noise,
+          buildings,
+        );
       }
 
       // Storefronts — temporarily disabled

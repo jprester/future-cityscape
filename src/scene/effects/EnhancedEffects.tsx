@@ -123,8 +123,8 @@ export function EnhancedEffects({
       {/* Ambient Occlusion - darkens crevices and contact areas */}
       {quality.enableAO && (
         <N8AO
-          aoRadius={8}
-          intensity={25}
+          aoRadius={4}
+          intensity={4}
           distanceFalloff={0.5}
           halfRes={qualityLevel === "medium"}
         />

@@ -451,6 +451,20 @@ export class AssetManager {
         // Even without a map, normalize the intensity for consistent preset control
         mat.emissiveIntensity = 1.0;
       }
+
+      // Apply anisotropic filtering to the surface maps so they don't shimmer /
+      // grain at grazing angles or distance (e.g. the rooftop deck receding to
+      // the horizon). Set before first upload so it takes effect.
+      for (const key of [
+        "map",
+        "normalMap",
+        "roughnessMap",
+        "metalnessMap",
+        "aoMap",
+      ]) {
+        const tex = mat[key];
+        if (tex) tex.anisotropy = this.textureAnisotropy;
+      }
     }
 
     // Force material to update

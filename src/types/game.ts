@@ -81,6 +81,14 @@ export type RuntimePhysics = {
     y: number,
     z: number,
   ) => void;
+  addStaticTrimesh: (
+    id: string,
+    vertices: Float32Array,
+    indices: Uint32Array,
+    x: number,
+    y: number,
+    z: number,
+  ) => void;
   removeStatic: (id: string) => void;
   setEye: (eye: Vector3Like) => void;
 };

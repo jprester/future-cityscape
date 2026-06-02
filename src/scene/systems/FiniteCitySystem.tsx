@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Mesh,
-  BoxGeometry,
-  MeshStandardMaterial,
-  RepeatWrapping,
-} from "three";
-import type { Texture } from "three";
+import { Mesh, BoxGeometry, MeshStandardMaterial, RepeatWrapping } from "three";
+import type { Texture, BufferGeometry } from "three";
 import { useFrame } from "@react-three/fiber";
 import { useGameStore } from "../../context/GameContext";
 import { generateLayout, loadLayoutFromURL } from "../../config/cityLayouts";
@@ -153,9 +148,11 @@ export function FiniteCitySystem() {
       game.player.body.position.z = z;
       if (eyeY != null) {
         game.player.body.position.y = eyeY;
-        // Place the Rapier character capsule at the spawn (queued until the
-        // physics WASM is ready); the controller drives the body from here on.
-        game.physics?.setEye({ x, y: eyeY, z });
+        // For the rooftop vantage, FiniteCityVantage seats the Rapier capsule on
+        // the real deck height once its colliders exist — seating it here at the
+        // layout's roofY (below the deck) would wedge it under the deck. Only
+        // seat here for non-vantage (street) spawns.
+        if (!layout.vantage) game.physics?.setEye({ x, y: eyeY, z });
       }
       if (game.player.camera_target) {
         game.player.camera_target.rotation.y = rotationY;
@@ -534,16 +531,70 @@ function FiniteCityGround({
 
 // ─── Rooftop Vantage ───────────────────────────────────────────────────────────
 
-// The player's perch. A simple, fully procedural flat-topped box tower (no GLB)
-// so the roof is guaranteed flat and the footprint exact. The shaft is a plain
-// rectangle (only ever seen from the roof edge); the roof gets a low knee-high
-// parapet ledge + a few cubic structures.
-//
-// Collision is handled by Rapier (see the static-collider effect below):
-// the visible shaft/parapet/cubes are purely cosmetic — the player is stood up
-// and contained by invisible floor/wall/prop colliders.
-const PARAPET_HEIGHT = 0.8; // ~0.5 m — knee-high ledge, stays well clear of the view
-const PARAPET_THICKNESS = 1.5;
+// Local Y of the rooftop GLB's walkable deck = the dominant up-facing surface.
+// (The GLB's base is at y=0 but the deck slab sits a bit higher, so we can't
+// assume the deck is at the base — find it so the floor collider + spawn land on
+// it. Scale-proof: works off the already-scaled geometry.)
+function findDeckLocalY(geo: BufferGeometry): number {
+  const pos = geo.attributes.position.array as ArrayLike<number>;
+  const idx = geo.index?.array as ArrayLike<number> | undefined;
+  const count = idx ? idx.length : pos.length / 3;
+  const areaByY = new Map<number, number>();
+  const accum = (a: number, b: number, c: number) => {
+    const ux = pos[b * 3] - pos[a * 3];
+    const uy = pos[b * 3 + 1] - pos[a * 3 + 1];
+    const uz = pos[b * 3 + 2] - pos[a * 3 + 2];
+    const wx = pos[c * 3] - pos[a * 3];
+    const wy = pos[c * 3 + 1] - pos[a * 3 + 1];
+    const wz = pos[c * 3 + 2] - pos[a * 3 + 2];
+    const nx = uy * wz - uz * wy;
+    const ny = uz * wx - ux * wz;
+    const nz = ux * wy - uy * wx;
+    const len = Math.hypot(nx, ny, nz);
+    if (!len || ny / len <= 0.9) return; // only ~horizontal, up-facing faces
+    const cy = (pos[a * 3 + 1] + pos[b * 3 + 1] + pos[c * 3 + 1]) / 3;
+    const key = Math.round(cy * 5) / 5; // 0.2 u buckets
+    areaByY.set(key, (areaByY.get(key) ?? 0) + len / 2);
+  };
+  for (let i = 0; i < count; i += 3) {
+    if (idx) accum(idx[i], idx[i + 1], idx[i + 2]);
+    else accum(i, i + 1, i + 2);
+  }
+  let bestY = 0;
+  let bestArea = -1;
+  for (const [y, area] of areaByY) {
+    if (area > bestArea) {
+      bestArea = area;
+      bestY = y;
+    }
+  }
+  return bestY;
+}
+
+// The player's perch: a Blender-authored rooftop cap GLB (`vantage_rooftop`) on
+// a plain dark shaft that fills to street level. Collision is Rapier boxes: a
+// flat floor + edge walls from the rooftop GLB, plus one solid box per vent
+// prop. Footprint + deck height are derived from the GLB so it survives rescale.
+
+// Rooftop vent props, placed on the deck. (dx, dz) are world-unit offsets from
+// the vantage centre; `rot` is yaw in radians (keep to 90° steps — the box
+// collider only swaps X/Z extents for those). Each gets a matching solid box
+// collider, so tweak positions freely here without touching collision code.
+const VENT_PLACEMENTS: { key: string; dx: number; dz: number; rot: number }[] =
+  [
+    // Tall piped vents — left side
+    // { key: "vent_01", dx: -15, dz: -3, rot: 0 },
+    { key: "vent_01", dx: -15, dz: -15, rot: 0 },
+    // Small vents — far edge, 2×2
+    { key: "vent_03", dx: -9, dz: 10, rot: 0 },
+    { key: "vent_03", dx: -3, dz: 10, rot: 0 },
+    { key: "vent_03", dx: -9, dz: 16, rot: 0 },
+    { key: "vent_03", dx: -3, dz: 16, rot: 0 },
+    // Fan units — single column nearer the ledge (+X edge)
+    // { key: "vent_02", dx: 16, dz: -12, rot: 0 },
+    { key: "vent_02", dx: 16, dz: -3, rot: 0 },
+    { key: "vent_02", dx: 16, dz: 6, rot: 0 },
+  ];
 
 function FiniteCityVantage({
   layout,
@@ -556,41 +607,26 @@ function FiniteCityVantage({
 }) {
   const v = layout.vantage;
 
-  // Rooftop structures (cubic shapes), defined once so the visible mesh and the
-  // collision box stay in sync — the player is blocked from walking into them.
-  const structures = useMemo(() => {
-    if (!v) return [];
-    const { x, z, width, depth, roofY } = v;
-    return [
-      // HVAC block, far corner
-      {
-        w: 12,
-        h: 6,
-        d: 9,
-        cx: x + width / 2 - 11,
-        cy: roofY + 3,
-        cz: z - depth / 2 + 10,
-      },
-      // Vent stack, opposite corner
-      {
-        w: 4,
-        h: 11,
-        d: 4,
-        cx: x - width / 2 + 10,
-        cy: roofY + 5.5,
-        cz: z + depth / 2 - 10,
-      },
-    ];
-  }, [v]);
-
-  // Visible platform: shaft + parapet rails + rooftop structures.
+  // Visible platform: the Blender-authored rooftop cap GLB, sitting on a plain
+  // dark shaft that fills down to street level. The GLB is the rooftop the
+  // player sees; the shaft is just the building body below (only seen over the
+  // edge). Procedural box visuals (deck/parapet/props) were replaced by the GLB.
   const meshes = useMemo(() => {
     if (!v) return [];
-    const { x, z, width, depth, roofY } = v;
+    const { x, z, roofY } = v;
+    const assets = game?.assets;
+    if (!assets?.loaded) return []; // rebuilds when assets finish (see deps)
+    const capGeo = assets.getModel("vantage_rooftop");
+    if (!capGeo) return [];
+    if (!capGeo.boundingBox) capGeo.computeBoundingBox();
+    const bb = capGeo.boundingBox!;
+    const capW = bb.max.x - bb.min.x;
+    const capD = bb.max.z - bb.min.z;
     const out: Mesh[] = [];
 
-    // Shaft — top face at roofY is the roof surface. Player only sees this from
-    // the roof edge, so a plain dark slab is fine.
+    // Shaft — matches the cap footprint, fills street→roof. Owned by us (the
+    // userData flag tells the dispose effect it's safe to free, unlike the
+    // shared GLB geometry/material from the AssetManager).
     const shaftMat = new MeshStandardMaterial({
       color: "#14141d",
       roughness: 0.9,
@@ -598,127 +634,155 @@ function FiniteCityVantage({
       emissive: "#0a1622",
       emissiveIntensity: 0.25,
     });
-    const shaft = new Mesh(new BoxGeometry(width, roofY, depth), shaftMat);
+    const shaftGeo = new BoxGeometry(capW, roofY, capD);
+    shaftGeo.userData.owned = true;
+    shaftMat.userData.owned = true;
+    const shaft = new Mesh(shaftGeo, shaftMat);
     shaft.position.set(x, roofY / 2, z);
     out.push(shaft);
 
-    // Parapet — a low knee-high ledge ringing the roof edge.
-    const parapetMat = new MeshStandardMaterial({
-      color: "#23232e",
-      roughness: 0.8,
-      metalness: 0.2,
-    });
-    const py = roofY + PARAPET_HEIGHT / 2;
-    const railNS = new BoxGeometry(width, PARAPET_HEIGHT, PARAPET_THICKNESS);
-    const railEW = new BoxGeometry(PARAPET_THICKNESS, PARAPET_HEIGHT, depth);
-    const offZ = depth / 2 - PARAPET_THICKNESS / 2;
-    const offX = width / 2 - PARAPET_THICKNESS / 2;
-    for (const sz of [offZ, -offZ]) {
-      const rail = new Mesh(railNS, parapetMat);
-      rail.position.set(x, py, z + sz);
-      out.push(rail);
-    }
-    for (const sx of [offX, -offX]) {
-      const rail = new Mesh(railEW, parapetMat);
-      rail.position.set(x + sx, py, z);
-      out.push(rail);
-    }
+    // Rooftop cap GLB — its base (bb.min.y) sits at the roof height (roofY).
+    const capMat = assets.getMaterial("__embedded_vantage_rooftop");
+    const cap = new Mesh(capGeo, capMat);
+    cap.position.set(x, roofY - bb.min.y, z);
+    out.push(cap);
 
-    // Rooftop structures — a couple of cubic shapes for visual interest, tucked
-    // into corners away from the (centered) spawn.
-    const structMat = new MeshStandardMaterial({
-      color: "#3a3a48",
-      roughness: 0.6,
-      metalness: 0.45,
-    });
-    for (const s of structures) {
-      const m = new Mesh(new BoxGeometry(s.w, s.h, s.d), structMat);
-      m.position.set(s.cx, s.cy, s.cz);
+    // Vent props on the deck. Each model is centred at its origin with base at
+    // y=0, so we drop it on the deck surface. Geometry/materials are shared
+    // (AssetManager-owned), so the dispose effect leaves them alone.
+    const deckY = roofY + (findDeckLocalY(capGeo) - bb.min.y);
+    for (const p of VENT_PLACEMENTS) {
+      const geo = assets.getModel(p.key);
+      if (!geo) continue;
+      const mat = assets.getMaterial(`__embedded_${p.key}`);
+      const m = new Mesh(geo, mat);
+      m.position.set(x + p.dx, deckY, z + p.dz);
+      m.rotation.y = p.rot;
       out.push(m);
     }
 
     return out;
-  }, [v, structures]);
+  }, [v, game?.assets, game?.assets?.loaded]);
 
-  // Dispose geometries/materials when the platform is rebuilt/unmounted.
+  // Dispose only the geometries/materials WE created (tagged userData.owned);
+  // the GLB geometry + embedded material are owned by the AssetManager.
   useEffect(() => {
     return () => {
-      const geos = new Set<BoxGeometry>();
-      const mats = new Set<MeshStandardMaterial>();
       for (const m of meshes) {
-        geos.add(m.geometry as BoxGeometry);
-        mats.add(m.material as MeshStandardMaterial);
+        const geo = m.geometry;
+        if (geo?.userData?.owned) geo.dispose();
+        const mat = m.material;
+        if (!Array.isArray(mat) && mat?.userData?.owned) mat.dispose();
       }
-      geos.forEach((g) => g.dispose());
-      mats.forEach((m) => m.dispose());
     };
   }, [meshes]);
 
   // Rapier static colliders for the vantage (the player's kinematic capsule is
-  // swept against these by the character controller):
-  //   • Floor — a flat box whose top is the roof surface; the capsule stands on it.
-  //   • Edge walls — 4 invisible walls just outside the footprint, taller than
-  //     the capsule, so the player can't walk off the roof. The visible parapet
-  //     stays knee-high; these are the actual containment.
-  //   • Props — a box per HVAC/vent so the capsule is stopped at them.
+  // swept against these by the character controller). The rooftop GLB is just
+  // deck + parapet, so collision is two simple box types derived from it:
+  //   • Flat floor box — the standing surface at the deck height.
+  //   • Edge walls — 4 invisible walls just outside the footprint so the player
+  //     can't walk off the roof even though the parapet is low.
+  // Rooftop props are placed separately, each with its own matching collider.
   useEffect(() => {
     const physics = game?.physics;
-    if (!v || !physics) return;
-    const { x, z, width, depth, roofY } = v;
-    const hw = width / 2;
-    const hd = depth / 2;
+    const assets = game?.assets;
+    if (!v || !physics || !assets?.loaded) return;
+    const { x, z, roofY } = v;
+    const capGeo = assets.getModel("vantage_rooftop");
+    if (!capGeo) return;
+    if (!capGeo.boundingBox) capGeo.computeBoundingBox();
+    const bb = capGeo.boundingBox!;
+    const hw = (bb.max.x - bb.min.x) / 2;
+    const hd = (bb.max.z - bb.min.z) / 2;
+    const cx = x + (bb.max.x + bb.min.x) / 2; // bbox center (GLB is ~centered)
+    const cz = z + (bb.max.z + bb.min.z) / 2;
+    // Walkable deck height in world units (GLB base sits at roofY since bb.min.y≈0).
+    const deckLocalY = findDeckLocalY(capGeo);
+    const deckY = roofY + (deckLocalY - bb.min.y);
     const WALL_HALF_H = 1.6; // ~2 m tall — capsule can't autostep over it
     const WALL_HALF_T = 0.5; // 1 u thick, sits just outside the footprint edge
-    const wallY = roofY + WALL_HALF_H;
+    const wallY = deckY + WALL_HALF_H;
 
     const ids: string[] = [];
-    const add = (
+    const addBox = (
       id: string,
       hx: number,
       hy: number,
       hz: number,
-      cx: number,
-      cy: number,
-      cz: number,
+      px: number,
+      py: number,
+      pz: number,
     ) => {
-      physics.addStaticBox(id, hx, hy, hz, cx, cy, cz);
+      physics.addStaticBox(id, hx, hy, hz, px, py, pz);
       ids.push(id);
     };
 
-    // Floor: top face at roofY.
-    add("vantage-floor", hw, 2, hd, x, roofY - 2, z);
-    // Edge walls (inner face flush with the footprint edge).
-    add("vantage-wall-n", hw + WALL_HALF_T, WALL_HALF_H, WALL_HALF_T, x, wallY, z + hd + WALL_HALF_T);
-    add("vantage-wall-s", hw + WALL_HALF_T, WALL_HALF_H, WALL_HALF_T, x, wallY, z - hd - WALL_HALF_T);
-    add("vantage-wall-e", WALL_HALF_T, WALL_HALF_H, hd + WALL_HALF_T, x + hw + WALL_HALF_T, wallY, z);
-    add("vantage-wall-w", WALL_HALF_T, WALL_HALF_H, hd + WALL_HALF_T, x - hw - WALL_HALF_T, wallY, z);
-    // Props. The collider footprint is grown horizontally so the player is
-    // stopped a bit back from the visible surface — otherwise they stop within
-    // the camera near plane (1 u) of the box face and the renderer clips it
-    // away (you "see through" the HVAC/vent). Height is left at the visible
-    // size. Margin = near plane (1) − capsule radius (0.6) + slack.
-    const PROP_MARGIN = 1.0;
-    structures.forEach((s, i) => {
-      add(
-        `vantage-prop-${i}`,
-        s.w / 2 + PROP_MARGIN,
-        s.h / 2,
-        s.d / 2 + PROP_MARGIN,
-        s.cx,
-        s.cy,
-        s.cz,
-      );
+    // Flat floor — the standing surface, top at the deck height.
+    addBox("vantage-floor", hw, 2, hd, cx, deckY - 2, cz);
+    // Edge walls (inner face flush with the footprint edge) — fall safety.
+    addBox(
+      "vantage-wall-n",
+      hw + WALL_HALF_T,
+      WALL_HALF_H,
+      WALL_HALF_T,
+      cx,
+      wallY,
+      cz + hd + WALL_HALF_T,
+    );
+    addBox(
+      "vantage-wall-s",
+      hw + WALL_HALF_T,
+      WALL_HALF_H,
+      WALL_HALF_T,
+      cx,
+      wallY,
+      cz - hd - WALL_HALF_T,
+    );
+    addBox(
+      "vantage-wall-e",
+      WALL_HALF_T,
+      WALL_HALF_H,
+      hd + WALL_HALF_T,
+      cx + hw + WALL_HALF_T,
+      wallY,
+      cz,
+    );
+    addBox(
+      "vantage-wall-w",
+      WALL_HALF_T,
+      WALL_HALF_H,
+      hd + WALL_HALF_T,
+      cx - hw - WALL_HALF_T,
+      wallY,
+      cz,
+    );
+
+    // One solid box per vent prop, sized to its bounding box (+ a small margin so
+    // the player stops far enough back that the vent face stays outside the
+    // camera near plane). For 90° yaw the footprint X/Z are swapped.
+    const PROP_MARGIN = 0.5;
+    VENT_PLACEMENTS.forEach((p, i) => {
+      const geo = assets.getModel(p.key);
+      if (!geo) return;
+      if (!geo.boundingBox) geo.computeBoundingBox();
+      const vb = geo.boundingBox!;
+      let phx = (vb.max.x - vb.min.x) / 2 + PROP_MARGIN;
+      let phz = (vb.max.z - vb.min.z) / 2 + PROP_MARGIN;
+      const phy = (vb.max.y - vb.min.y) / 2;
+      const quarter = Math.round(p.rot / (Math.PI / 2)) % 2 !== 0;
+      if (quarter) [phx, phz] = [phz, phx];
+      addBox(`vent-${i}`, phx, phy, phz, x + p.dx, deckY + phy, z + p.dz);
     });
 
-    // Seat the capsule on the roof now that the floor exists — guards against a
-    // spawn applied before these colliders were registered (the character would
-    // otherwise fall past the not-yet-present floor).
-    physics.setEye({ x, y: roofY + HUMAN_EYE_HEIGHT_UNITS, z });
+    // Seat the capsule on the deck now that the colliders exist (guards against a
+    // spawn applied before they were registered).
+    physics.setEye({ x, y: deckY + HUMAN_EYE_HEIGHT_UNITS, z });
 
     return () => {
       for (const id of ids) physics.removeStatic(id);
     };
-  }, [v, structures, game?.physics]);
+  }, [v, game?.physics, game?.assets, game?.assets?.loaded]);
 
   if (!v || !visibility.buildings) return null;
   return (
@@ -732,18 +796,17 @@ function FiniteCityVantage({
       <pointLight
         position={[v.x, v.roofY + 24, v.z]}
         color="#ffe6c0"
-        intensity={1200}
+        intensity={100}
         distance={190}
         decay={2}
       />
-      {/* <pointLight
+      <pointLight
         position={[v.x - v.width / 4, v.roofY + 10, v.z + v.depth / 4]}
         color="#4a7bff"
-        intensity={600}
+        intensity={200}
         distance={100}
         decay={2}
-      /> */}
+      />
     </>
   );
 }
-

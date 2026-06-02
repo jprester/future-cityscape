@@ -88,6 +88,19 @@ class PhysicsWorld {
     this.world.step();
   }
 
+  // Register a static triangle-mesh collider from raw geometry (e.g. a GLB).
+  // `vertices` is a flat Float32Array (x,y,z…) in the mesh's local space;
+  // `indices` a Uint32Array. (x,y,z) places the mesh origin in the world.
+  addStaticTrimesh(id, vertices, indices, x, y, z) {
+    const spec = { id, trimesh: { vertices, indices }, x, y, z };
+    if (!this.ready) {
+      this._pendingStatics.push(spec);
+      return;
+    }
+    this._createStatic(spec);
+    this.world.step();
+  }
+
   removeStatic(id) {
     if (!this.ready) {
       this._pendingStatics = this._pendingStatics.filter((s) => s.id !== id);
@@ -105,10 +118,10 @@ class PhysicsWorld {
     const body = this.world.createRigidBody(
       RAPIER.RigidBodyDesc.fixed().setTranslation(spec.x, spec.y, spec.z),
     );
-    this.world.createCollider(
-      RAPIER.ColliderDesc.cuboid(spec.hx, spec.hy, spec.hz),
-      body,
-    );
+    const colDesc = spec.trimesh
+      ? RAPIER.ColliderDesc.trimesh(spec.trimesh.vertices, spec.trimesh.indices)
+      : RAPIER.ColliderDesc.cuboid(spec.hx, spec.hy, spec.hz);
+    this.world.createCollider(colDesc, body);
     this._statics.set(spec.id, { body });
   }
 
