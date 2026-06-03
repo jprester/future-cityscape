@@ -68,7 +68,7 @@ export const ENVIRONMENT_NIGHT: EnvironmentConfig = {
   },
   ambient: {
     color: COLORS.night.ambient,
-    intensity: 0.4,
+    intensity: 0.2,
   },
 };
 

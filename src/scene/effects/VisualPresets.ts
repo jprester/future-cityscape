@@ -55,8 +55,8 @@ export const PRESET_DEFAULT: VisualPreset = {
   id: "default",
   name: "Default",
   bloom: {
-    intensity: 5.0,
-    luminanceThreshold: 0.4,
+    intensity: 3.5,
+    luminanceThreshold: 0.1,
     luminanceSmoothing: 0.3,
   },
   chromaticAberration: {
