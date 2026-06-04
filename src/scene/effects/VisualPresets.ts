@@ -55,9 +55,10 @@ export const PRESET_DEFAULT: VisualPreset = {
   id: "default",
   name: "Default",
   bloom: {
-    intensity: 3.5,
-    luminanceThreshold: 0.1,
+    intensity: 5.0,
+    luminanceThreshold: 0.08,
     luminanceSmoothing: 0.3,
+    mipmapBlur: true,
   },
   chromaticAberration: {
     enabled: false,
@@ -84,9 +85,9 @@ export const PRESET_DEFAULT: VisualPreset = {
     opacity: 0.02,
   },
   emissive: {
-    ads: 1.2,
-    buildings: 1.6,
-    neons: 1.0,
+    ads: 1.4,
+    buildings: 1.9,
+    neons: 1.2,
     ambient: 1.0,
     smoke: 1.0,
   },

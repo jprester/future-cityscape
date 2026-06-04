@@ -9,8 +9,11 @@
 
 export const COLORS = {
   // Night environment
+  // Fog is a deep indigo/purple-blue so distant towers dissolve into a hazy
+  // glow (rather than the old dark teal void). This is the atmospheric-depth
+  // tint that makes the skyline read as a vast cyberpunk megacity.
   night: {
-    fog: 0x0f2530,
+    fog: 0x1b1838,
     sun: 0x8b79ff,
     ambient: 0x1c384a,
   },

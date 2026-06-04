@@ -17,18 +17,27 @@ import {
 
 type GetTexture = (key: string) => Texture | undefined;
 
-// Fixed neon blue used for every `building_NN` material's window emissive.
-// Previously a weighted random palette (teal / white / amber / magenta) gave
-// each material a different tint, which made the small procedural buildings
-// look stylistically detached from the GLB skyscrapers. Locking to a single
-// cool blue keeps the small-building skyline coherent with the rest of the
-// scene. Change the constant below to retint everything in one place.
-const h = 185 + Math.random() * 25;
-const BUILDING_WINDOW_EMISSIVE = new Color(`hsl(${h}, 70%, 78%)`);
+// Window emissive uses a controlled TWO-TONE split: most `building_NN`
+// materials glow a cool neon-blue, a portion glow warm amber. The warm windows
+// popping out of the cool purple fog are the signature cyberpunk-skyline look
+// (see the Gemini reference). This is deliberately *not* the old 4-color random
+// palette (teal/white/amber/magenta), which looked stylistically incoherent — a
+// tight blue↔amber two-tone keeps the skyline unified while adding depth and
+// contrast. Tune the fraction / hues below to retint everything in one place.
+const WARM_WINDOW_FRACTION = 0.38;
+
+function coolWindowEmissive(): Color {
+  return new Color(`hsl(${190 + Math.random() * 20}, 70%, 76%)`);
+}
+
+function warmWindowEmissive(): Color {
+  return new Color(`hsl(${32 + Math.random() * 12}, 85%, 70%)`);
+}
 
 function pickWindowEmissive(): Color {
-  // Clone so callers can mutate without affecting the shared template.
-  return BUILDING_WINDOW_EMISSIVE.clone();
+  return Math.random() < WARM_WINDOW_FRACTION
+    ? warmWindowEmissive()
+    : coolWindowEmissive();
 }
 
 /**
