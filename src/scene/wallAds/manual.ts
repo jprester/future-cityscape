@@ -125,7 +125,7 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
 
   // Lower buildings in the dead center
   { gi: 6, gj: 7, adId: 8, face: 2, height: 50, y: 150 }, // retrowave
-  { gi: 12, gj: 10, adId: 3, face: 1, height: 100, y: 160 }, // pixel koi
+  { gi: 12, gj: 9, adId: 3, face: 2, height: 100, y: 190 }, // pixel koi
 
   // Southern skyscrapers / tower row
   { gi: 15, gj: 11, adId: 15, face: 2, height: 45, offsetOut: 25, y: 200 }, // R&B
