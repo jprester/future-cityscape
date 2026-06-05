@@ -19,8 +19,8 @@ import type { WallAdManualEntry } from "./types";
 export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
   // Slim tower at (gi=5, gj=5) — four-sided billboard ring at the top
   {
-    gi: 9,
-    gj: 4,
+    gi: 12,
+    gj: 7,
     adId: 17,
     face: 0,
     height: 42,
@@ -30,8 +30,8 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
     emissiveIntensity: 1.2,
   }, // energy drink — N
   {
-    gi: 9,
-    gj: 4,
+    gi: 12,
+    gj: 7,
     adId: 17,
     face: 1,
     height: 42,
@@ -41,8 +41,8 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
     emissiveIntensity: 1.2,
   }, // energy drink — E
   {
-    gi: 9,
-    gj: 4,
+    gi: 12,
+    gj: 7,
     adId: 17,
     face: 2,
     height: 42,
@@ -52,8 +52,8 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
     emissiveIntensity: 1.2,
   }, // energy drink — S
   {
-    gi: 9,
-    gj: 4,
+    gi: 12,
+    gj: 7,
     adId: 17,
     face: 3,
     height: 42,
@@ -65,49 +65,49 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
 
   // Skyscraper at (10, 5) — side-mounted ninja portrait
   {
-    gi: 10,
-    gj: 10,
+    gi: 15,
+    gj: 13,
     adId: 1,
-    face: 2,
+    face: 3,
     height: 80,
     offsetOut: 25,
     offsetSide: -70,
-    y: 100,
+    y: 140,
     cutBackground: true,
-    emissiveIntensity: 1,
+    emissiveIntensity: 1.5,
   }, // ninja
 
   // Cyberdine tower (7, 4) — hero billboard on the west face, visible from spawn
-  { gi: 4, gj: 4, adId: 16, face: 2, height: 100, offsetOut: 80, y: 220 }, // holographic letters
+  { gi: 9, gj: 7, adId: 16, face: 0, height: 80, offsetOut: 80, y: 180 }, // holographic letters
 
   // Middle-left commercial area — tall neon banner
-  { gi: 13, gj: 5, adId: 12, face: 2, height: 70 }, // neon Japanese banner
+  { gi: 8, gj: 14, adId: 12, face: 2, height: 70, y: 430, offsetOut: 50 }, // neon Japanese banner
 
   // Mid-upper skyscraper row — portrait ads tucked partially into the building
   // for an embedded look (not floating).
   {
-    gi: 8,
-    gj: 11,
+    gi: 11,
+    gj: 14,
     adId: 4,
     face: 0,
     height: 135,
     offsetOut: 40,
     offsetSide: 0,
-    y: 150,
+    y: 220,
     // emissiveIntensity: 4,
     cutBackground: false,
   }, // calligraphy
-  { gi: 3, gj: 12, adId: 11, face: 3, height: 80, y: 180 }, // square: image-1812
+  { gi: 11, gj: 8, adId: 11, face: 1, height: 30, y: 160 }, // square: image-1812
 
   // Center towers (gj=7)
   {
-    gi: 12,
-    gj: 6,
+    gi: 15,
+    gj: 9,
     adId: 5,
     face: 2,
-    height: 62,
-    offsetOut: 30,
-    y: 180,
+    height: 70,
+    offsetOut: 22,
+    y: 170,
     style: "billboard",
     emissiveIntensity: 0.7,
   }, // cdbj
@@ -128,8 +128,8 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
   { gi: 12, gj: 10, adId: 3, face: 1, height: 100, y: 160 }, // pixel koi
 
   // Southern skyscrapers / tower row
-  { gi: 4, gj: 12, adId: 15, face: 3, height: 55, offsetOut: 25, y: 170 }, // R&B
-  { gi: 10, gj: 12, adId: 9, face: 1, height: 140, offsetOut: 76, y: 150 }, // ramen
+  { gi: 15, gj: 11, adId: 15, face: 2, height: 45, offsetOut: 25, y: 200 }, // R&B
+  { gi: 8, gj: 12, adId: 9, face: 2, height: 80, offsetOut: 40, y: 150 }, // ramen
   { gi: 7, gj: 10, adId: 14, face: 2, height: 55, offsetOut: 0, y: 150 }, // 0_1 landscape
   {
     gi: 5,
@@ -146,15 +146,15 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
   // Bottom tower row
   // { gi: 9, gj: 5, adId: 6, face: 2, height: 55, offsetOut: 50, y: 250 }, // teal gradient
   {
-    gi: 11,
-    gj: 5,
+    gi: 9,
+    gj: 15,
     adId: 2,
-    face: 2,
+    face: 1,
     height: 80,
     offsetOut: 0,
-    y: 220,
+    y: 200,
     cutBackground: true,
-    emissiveIntensity: 4,
+    emissiveIntensity: 5,
   }, // Sengoku icon
 ];
 

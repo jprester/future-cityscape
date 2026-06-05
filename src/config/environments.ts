@@ -56,12 +56,16 @@ export const ENVIRONMENT_NIGHT: EnvironmentConfig = {
   shadows: false,
   environmentIntensity: 0,
   fog: {
+    // Thinner than before (0.0011) so the large city recedes into a hazy depth
+    // — distant towers stay faintly visible as silhouettes instead of being
+    // culled into a hard void just past the foreground. This is what makes the
+    // skyline read as a vast megacity (see the cyberpunk reference).
     color: COLORS.night.fog,
-    density: 0.0011,
+    density: 0.0008,
   },
   sun: {
     color: COLORS.night.sun,
-    intensity: 0.6,
+    intensity: 0.1,
     x: 1,
     y: 0.5,
     z: 0.25,

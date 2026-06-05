@@ -234,6 +234,72 @@ function parseTemplate(template: string): ParsedBlock[][] {
   );
 }
 
+// ── Procedural outskirts ─────────────────────────────────────────────────────
+//
+// The hand-authored CITY_TEMPLATE is wrapped in a belt of procedurally-typed
+// outskirt blocks — low-rise residential/commercial that thins out toward the
+// edge so the city dissolves into a fog-shrouded sprawl instead of ending
+// abruptly. These feed the exact same instanced-building path as the core
+// (placeSmallBuildings), so they cost only a handful of extra draw calls. Bump
+// OUTSKIRT_RINGS for a deeper sprawl (watch the camera far-plane at 2800 — rings
+// beyond that from the centre vantage are clipped).
+const OUTSKIRT_RINGS = 3;
+// Base probability a given outskirt cell is empty; grows with each ring out, so
+// the sprawl gets sparser the further it is from the core.
+const OUTSKIRT_EMPTY_BASE = 0.38;
+const OUTSKIRT_EMPTY_PER_RING = 0.13;
+
+function makeOutskirtBlock(
+  gi: number,
+  gj: number,
+  ring: number,
+  noise: NoiseGen,
+): ParsedBlock {
+  // Sparser the further out (fog-edge outskirts).
+  const emptyProb = OUTSKIRT_EMPTY_BASE + OUTSKIRT_EMPTY_PER_RING * (ring - 1);
+  const emptyNoise = fixNoise(noise.noise(gi * 0.9 + 13.1, gj * 0.9 - 7.3));
+  if (emptyNoise < emptyProb) {
+    return { type: "empty" };
+  }
+  // Mostly residential out here, a fair amount of commercial, a little mixed.
+  const typeNoise = fixNoise(noise.noise(gi * 0.35, gj * 0.35));
+  if (typeNoise < 0.55) return { type: "residential" };
+  if (typeNoise < 0.85) return { type: "commercial" };
+  return { type: "mixed" };
+}
+
+// Wrap the authored core grid in OUTSKIRT_RINGS of procedural blocks, keeping
+// the core centered (so the vantage stays at world origin).
+function expandWithOutskirts(
+  core: ParsedBlock[][],
+  noise: NoiseGen,
+): ParsedBlock[][] {
+  const R = OUTSKIRT_RINGS;
+  if (R <= 0) return core;
+  const coreSize = core.length;
+  const newSize = coreSize + 2 * R;
+  const grid: ParsedBlock[][] = [];
+  for (let gj = 0; gj < newSize; gj++) {
+    const row: ParsedBlock[] = [];
+    for (let gi = 0; gi < newSize; gi++) {
+      const ci = gi - R;
+      const cj = gj - R;
+      if (ci >= 0 && ci < coreSize && cj >= 0 && cj < coreSize) {
+        // Inside the authored core — copy verbatim.
+        row.push(core[cj][ci]);
+        continue;
+      }
+      // How many rings outside the core is this cell (1..R)?
+      const outX = ci < 0 ? -ci : ci >= coreSize ? ci - coreSize + 1 : 0;
+      const outY = cj < 0 ? -cj : cj >= coreSize ? cj - coreSize + 1 : 0;
+      const ring = Math.max(outX, outY);
+      row.push(makeOutskirtBlock(gi, gj, ring, noise));
+    }
+    grid.push(row);
+  }
+  return grid;
+}
+
 // ── Layout generator ─────────────────────────────────────────────────────────
 
 /**
@@ -247,11 +313,13 @@ export function generateLayout(
   seed: number = 9746,
   _gridSize: number = 17,
 ): FiniteCityLayout {
-  const grid = parseTemplate(CITY_TEMPLATE);
-  const gridSize = grid.length;
-
   const noise = createPerlin(seed);
   noise.noiseDetail(8, 0.5);
+
+  // Authored core wrapped in a procedural low-rise outskirt belt (fog-edge
+  // sprawl). The core stays centered, so the vantage remains at world origin.
+  const grid = expandWithOutskirts(parseTemplate(CITY_TEMPLATE), noise);
+  const gridSize = grid.length;
 
   const buildings: FiniteBuildingPlacement[] = [];
   const groundTiles: { x: number; z: number }[] = [];
@@ -347,6 +415,14 @@ export function generateLayout(
   }
 
   const worldExtent = halfGrid * CELL_SIZE + CELL_SIZE;
+
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[generateLayout] ${gridSize}x${gridSize} grid → ${buildings.length} buildings ` +
+        `(${OUTSKIRT_RINGS} outskirt rings)`,
+    );
+  }
 
   // Spawn on the procedural vantage roof when the template defines one ("X").
   // The roof Y is a fixed constant (the box's flat top), so eye height is known

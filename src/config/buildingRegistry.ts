@@ -327,7 +327,9 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
         format: "glb",
         path: "models/skyscrapers/quality-skyscraper-dual.glb",
         emissiveBase: 1.0,
+        scale: 1.6,
       },
+      rotation: { y: Math.PI * 1.5 },
     },
     {
       key: "skyscraper_11",
@@ -438,7 +440,7 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
         path: "models/towers/lz-tower-4.glb",
         emissiveBase: 2.0,
       },
-      rotation: { y: Math.PI / 2 },
+      // rotation: { y: Math.PI / 2 },
     },
     {
       key: "tower_07",

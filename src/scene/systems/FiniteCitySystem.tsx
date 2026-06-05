@@ -17,6 +17,7 @@ import {
   type BuildingDescriptor,
 } from "../visuals/InstancedBuildings";
 import { CityBlockUpdateableVisuals } from "../visuals/CityBlockUpdateableVisuals";
+import { HorizonSkyline } from "../visuals/HorizonSkyline";
 import type { GameRuntime, UpdateableVisualState } from "../../types/game";
 import {
   FiniteCityWallAds,
@@ -186,7 +187,15 @@ export function FiniteCitySystem() {
       return (seed - 1) / 2147483646;
     };
     for (const b of layout.buildings) {
-      if (seededRandom() < 0.05) {
+      // Steam plumes belong on the big downtown towers/skyscrapers only. The
+      // small residential/commercial fill (`s_01/02/03`) would float its ~190u
+      // plume high above its low roof, and across the expanded outskirts those
+      // plumes piled up into a flat "fog deck" on the horizon. Restricting to
+      // tall buildings (and raising the per-building chance so downtown still
+      // reads steamy) keeps the steam where it makes sense and kills the deck.
+      const isTall = !b.modelKey.startsWith("s_");
+      if (!isTall) continue;
+      if (seededRandom() < 0.5) {
         const s = 1 + seededRandom() * 8;
         const sy = s * (1 + seededRandom() * 0.5);
         smokes.push({
@@ -236,7 +245,7 @@ export function FiniteCitySystem() {
         // ~7% of road crossings get a beam.
         if (seededRandom() > 0.07) continue;
         const matKey = spotMats[Math.floor(seededRandom() * spotMats.length)];
-        const w = 5 + seededRandom() * 4; // width scale (≈20–36 u, ~road width)
+        const w = 7 + seededRandom() * 5; // width scale (≈28–48 u, fuller soft shaft)
         const h = 14 + seededRandom() * 8; // height scale (≈700–1100 u shaft)
         const spot: UpdateableVisualState = {
           isVisual: true,
@@ -306,6 +315,7 @@ export function FiniteCitySystem() {
         game={gameRef.current}
         visibility={visibility}
       />
+      <HorizonSkyline visible={visibility.buildings} />
       {visibility.buildings && (
         <InstancedBuildings buildings={buildings} game={gameRef.current} />
       )}

@@ -191,13 +191,18 @@ export function createMaterialFactories(): MaterialFactoryMap {
       });
   }
 
-  // Spotlights (4 variants)
+  // Spotlights (4 variants). Violet-family searchlight beams to match the
+  // cyberpunk reference — previously flat white, which bloomed to a harsh
+  // lime-white core. A reduced opacity softens each beam into a volumetric glow
+  // instead of a hard line, and four slightly different violets give the
+  // skyline variety. The alphaMap (a soft cone gradient) shapes the falloff.
+  const SPOTLIGHT_BEAM_COLORS = [0x8a5cff, 0xb060ff, 0x6a7cff, 0xa070ff];
   for (let i = 1; i <= 4; i++) {
     const id = i.toString().padStart(2, "0");
     factories[`spotlight_${id}`] = (getTexture) =>
       new MeshPhongMaterial({
         alphaMap: getTexture(`spotlight_${id}`),
-        color: 0xffffff,
+        color: SPOTLIGHT_BEAM_COLORS[i - 1],
         shininess: 0,
         specular: 0x000000,
         blending: AdditiveBlending,
@@ -207,6 +212,7 @@ export function createMaterialFactories(): MaterialFactoryMap {
         depthWrite: false,
         depthTest: true,
         transparent: true,
+        opacity: 0.55,
       });
   }
 

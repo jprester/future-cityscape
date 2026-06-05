@@ -50,6 +50,12 @@ export function GameBridge() {
     gameRef.current = game;
     setEnvironment(game.environment);
 
+    // DEV-only handle for debugging / headless tooling (e.g. aiming the camera
+    // for verification screenshots). Stripped from production builds.
+    if (import.meta.env.DEV) {
+      (window as unknown as { game?: unknown }).game = game;
+    }
+
     gl.toneMapping = NoToneMapping;
     gl.toneMappingExposure = 1.0;
     gl.outputColorSpace = SRGBColorSpace;
