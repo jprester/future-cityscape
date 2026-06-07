@@ -131,7 +131,7 @@ const CITY_TEMPLATE = `
 . r r m T m m m m m m S m m r r .
 . r r m m S m m S m S m m m r r .
 . r r m T m m T m m T m T m r r .
-. r r m m m m m m m m m m m r r .
+. r r m m m m m m S m m m m r r .
 . r r r r r r r r r r r r r r r .
 . r r r r r r r r r r r r r r r .
 . . . . . . . . . . . . . . . . .
@@ -550,9 +550,12 @@ function selectSmallBuilding(
       if (subtypeNoise < 0.66) return "s_01_02";
       return "s_01_03";
     case "commercial":
-      if (subtypeNoise < 0.33) return "s_02_01";
-      if (subtypeNoise < 0.66) return "s_02_02";
-      return "s_02_03";
+      // s_03_08 is the user's new commercial GLB (defined in the s_03 registry
+      // series for the GLB slot convention, but placed here in commercial zones).
+      if (subtypeNoise < 0.25) return "s_02_01";
+      if (subtypeNoise < 0.5) return "s_02_02";
+      if (subtypeNoise < 0.75) return "s_02_03";
+      return "s_03_08";
     case "industrial":
       if (subtypeNoise < 0.143) return "s_03_01";
       if (subtypeNoise < 0.286) return "s_03_02";

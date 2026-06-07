@@ -103,6 +103,18 @@ const SMALL_SERIES: BuildingSeries[] = [
           emissiveBase: 0.7,
         },
       },
+      {
+        // New commercial-look GLB the user added. Named to follow the GLB
+        // small-building slot convention (s_03_NN); it's offered in COMMERCIAL
+        // blocks via selectSmallBuilding (see generateLayout.ts).
+        key: "s_03_08",
+        weight: 1,
+        source: {
+          format: "glb",
+          path: "models/s_03_08-new-building.031.glb",
+          emissiveBase: 0.7,
+        },
+      },
     ],
   },
 ];
@@ -373,6 +385,18 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       source: {
         format: "glb",
         path: "models/skyscrapers/triangular-high-rise.glb",
+        emissiveBase: 1.0,
+      },
+    },
+    {
+      // New user-added skyscraper. Unique GLB path → adds one entry to the
+      // de-duplicated SKYSCRAPER_POOL, so the template gains one extra `S` cell
+      // to place it (see CITY_TEMPLATE in generateLayout.ts).
+      key: "skyscraper_16",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/skyscrapers/synth-skyscraper.glb",
         emissiveBase: 1.0,
       },
     },
