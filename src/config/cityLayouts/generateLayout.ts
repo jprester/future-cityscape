@@ -42,10 +42,36 @@ function getBuildingMatKey(noise: number): string {
 const NOISEFACTOR = 0.0017;
 const CELL_SIZE = CITY_BLOCK_SIZE + ROAD_WIDTH;
 
-// Residential (s_01) and commercial (s_02) windows read slightly small at human
-// scale, so enlarge those buildings uniformly a touch. Windows are baked into
-// the model UVs, so a uniform scale enlarges the windows proportionally.
+// Residential (s_01) OBJ windows read slightly small at human scale, so enlarge
+// those buildings uniformly a touch. Windows are baked into the model UVs, so a
+// uniform scale enlarges the windows proportionally. (Applies to OBJ small
+// buildings only — the GLB commercial/industrial models are pre-sized.)
 const SMALL_BUILDING_WINDOW_SCALE = 1.08;
+
+// Commercial blocks now use the 10 GLB commercial buildings the user added
+// (replacing the old OBJ s_02_01–03). Industrial blocks use those same models
+// plus the existing s_03_04–08 GLBs for extra variety. Both lists feed
+// pickFromNoise in selectSmallBuilding.
+const COMMERCIAL_BUILDINGS = [
+  "s_02_04",
+  "s_02_05",
+  "s_02_06",
+  "s_02_07",
+  "s_02_08",
+  "s_02_09",
+  "s_02_10",
+  "s_02_11",
+  "s_02_12",
+  "s_02_13",
+];
+const INDUSTRIAL_BUILDINGS = [
+  ...COMMERCIAL_BUILDINGS,
+  "s_03_04",
+  "s_03_05",
+  "s_03_06",
+  "s_03_07",
+  "s_03_08",
+];
 
 // ── City template ────────────────────────────────────────────────────────────
 //
@@ -498,9 +524,11 @@ function placeSmallBuildings(
 
       const type = selectSmallBuilding(blockType, typeNoise, subtypeNoise);
 
-      // Enlarge residential/commercial uniformly so their windows read larger.
+      // Enlarge OBJ residential buildings uniformly so their windows read
+      // larger. GLB models (commercial/industrial) are pre-sized, so they skip
+      // this — applying it would just scale the whole embedded-material mesh.
       const windowScale =
-        type.startsWith("s_01_") || type.startsWith("s_02_")
+        !EMBEDDED_MODEL_KEYS.has(type) && type.startsWith("s_01_")
           ? SMALL_BUILDING_WINDOW_SCALE
           : 1;
 
@@ -550,19 +578,8 @@ function selectSmallBuilding(
       if (subtypeNoise < 0.66) return "s_01_02";
       return "s_01_03";
     case "commercial":
-      // s_03_08 is the user's new commercial GLB (defined in the s_03 registry
-      // series for the GLB slot convention, but placed here in commercial zones).
-      if (subtypeNoise < 0.25) return "s_02_01";
-      if (subtypeNoise < 0.5) return "s_02_02";
-      if (subtypeNoise < 0.75) return "s_02_03";
-      return "s_03_08";
+      return pickFromNoise(COMMERCIAL_BUILDINGS, subtypeNoise);
     case "industrial":
-      if (subtypeNoise < 0.143) return "s_03_01";
-      if (subtypeNoise < 0.286) return "s_03_02";
-      if (subtypeNoise < 0.429) return "s_03_03";
-      if (subtypeNoise < 0.571) return "s_03_04";
-      if (subtypeNoise < 0.714) return "s_03_05";
-      if (subtypeNoise < 0.857) return "s_03_06";
-      return "s_03_07";
+      return pickFromNoise(INDUSTRIAL_BUILDINGS, subtypeNoise);
   }
 }
