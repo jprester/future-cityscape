@@ -186,24 +186,50 @@ export function FiniteCitySystem() {
       seed = (seed * 16807 + 0) % 2147483647;
       return (seed - 1) / 2147483646;
     };
+    // Steam plumes sit on (a) the big downtown towers/skyscrapers everywhere
+    // and (b) the taller GLB commercial/industrial fill (`s_02_`/`s_03_`,
+    // ~100–220u) — but the mid-rise plumes are gated to the DOWNTOWN CORE only.
+    // Across the expanded residential outskirts these plumes used to pile into
+    // a flat "fog deck" on the horizon; keeping mid-rise steam inside the core
+    // radius re-introduces street-level steam without bringing the deck back.
+    const core = layout.vantage ?? { x: 0, z: 0 };
+    const CORE_SMOKE_RADIUS = 6 * (CITY_BLOCK_SIZE + ROAD_WIDTH); // ~912u
+    const coreR2 = CORE_SMOKE_RADIUS * CORE_SMOKE_RADIUS;
     for (const b of layout.buildings) {
-      // Steam plumes belong on the big downtown towers/skyscrapers only. The
-      // small residential/commercial fill (`s_01/02/03`) would float its ~190u
-      // plume high above its low roof, and across the expanded outskirts those
-      // plumes piled up into a flat "fog deck" on the horizon. Restricting to
-      // tall buildings (and raising the per-building chance so downtown still
-      // reads steamy) keeps the steam where it makes sense and kills the deck.
       const isTall = !b.modelKey.startsWith("s_");
-      if (!isTall) continue;
-      if (seededRandom() < 0.5) {
-        const s = 1 + seededRandom() * 8;
+      const isMidRise =
+        b.modelKey.startsWith("s_02_") || b.modelKey.startsWith("s_03_");
+
+      // Per-tier plume settings: tall towers get the big high plume; mid-rise
+      // blocks get a smaller, lower plume near their roofline, and only when
+      // they fall inside the downtown core.
+      let chance: number;
+      let plumeY: number;
+      let scaleMax: number;
+      if (isTall) {
+        chance = 0.5;
+        plumeY = 190 * b.scaleY;
+        scaleMax = 8;
+      } else if (isMidRise) {
+        const dx = b.x - core.x;
+        const dz = b.z - core.z;
+        if (dx * dx + dz * dz > coreR2) continue; // outside core → no plume
+        chance = 0.22;
+        plumeY = 120 * b.scaleY;
+        scaleMax = 4;
+      } else {
+        continue; // low-rise residential (s_01) / anything else → no plume
+      }
+
+      if (seededRandom() < chance) {
+        const s = 1 + seededRandom() * scaleMax;
         const sy = s * (1 + seededRandom() * 0.5);
         smokes.push({
           isVisual: true,
           kind: "smoke",
           modelKey: "smoke",
           matKey: smokeMats[Math.floor(seededRandom() * smokeMats.length)],
-          position: { x: b.x, y: 190 * b.scaleY, z: b.z },
+          position: { x: b.x, y: plumeY, z: b.z },
           scale: { x: s, y: sy, z: s },
           rstep: seededRandom() * 7,
         });
@@ -242,8 +268,8 @@ export function FiniteCitySystem() {
 
     for (let x = firstRoad(minX); x <= maxX; x += CELL) {
       for (let z = firstRoad(minZ); z <= maxZ; z += CELL) {
-        // ~7% of road crossings get a beam.
-        if (seededRandom() > 0.07) continue;
+        // ~12% of road crossings get a beam (denser searchlight field).
+        if (seededRandom() > 0.12) continue;
         const matKey = spotMats[Math.floor(seededRandom() * spotMats.length)];
         const w = 7 + seededRandom() * 5; // width scale (≈28–48 u, fuller soft shaft)
         const h = 14 + seededRandom() * 8; // height scale (≈700–1100 u shaft)
