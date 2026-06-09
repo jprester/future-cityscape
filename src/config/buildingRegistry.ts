@@ -41,9 +41,30 @@ const SMALL_SERIES: BuildingSeries[] = [
     id: "01",
     ads: ["ads_s_01_01", "ads_s_01_02"],
     variants: [
-      { key: "s_01_01", weight: 1, source: { format: "obj", path: "models/buildings/residential/s_01_01.obj" } },
-      { key: "s_01_02", weight: 1, source: { format: "obj", path: "models/buildings/residential/s_01_02.obj" } },
-      { key: "s_01_03", weight: 1, source: { format: "obj", path: "models/buildings/residential/s_01_03.obj" } },
+      {
+        key: "s_01_01",
+        weight: 1,
+        source: {
+          format: "obj",
+          path: "models/buildings/residential/s_01_01.obj",
+        },
+      },
+      {
+        key: "s_01_02",
+        weight: 1,
+        source: {
+          format: "obj",
+          path: "models/buildings/residential/s_01_02.obj",
+        },
+      },
+      {
+        key: "s_01_03",
+        weight: 1,
+        source: {
+          format: "obj",
+          path: "models/buildings/residential/s_01_03.obj",
+        },
+      },
     ],
   },
   {
@@ -56,16 +77,96 @@ const SMALL_SERIES: BuildingSeries[] = [
     id: "02",
     ads: ["ads_s_02_01", "ads_s_02_02"],
     variants: [
-      { key: "s_02_04", weight: 1, source: { format: "glb", path: "models/buildings/commercial/2026-commercial-building-1.glb", emissiveBase: 0.7 } },
-      { key: "s_02_05", weight: 1, source: { format: "glb", path: "models/buildings/commercial/2026-commercial-building-2.glb", emissiveBase: 0.7 } },
-      { key: "s_02_06", weight: 1, source: { format: "glb", path: "models/buildings/commercial/2026-commercial-building-3.glb", emissiveBase: 0.7 } },
-      { key: "s_02_07", weight: 1, source: { format: "glb", path: "models/buildings/commercial/2026-commercial-building-4.glb", emissiveBase: 0.7 } },
-      { key: "s_02_08", weight: 1, source: { format: "glb", path: "models/buildings/commercial/2026-commercial-building-5.glb", emissiveBase: 0.7 } },
-      { key: "s_02_09", weight: 1, source: { format: "glb", path: "models/buildings/commercial/2026-commercial-building-6.glb", emissiveBase: 0.7 } },
-      { key: "s_02_10", weight: 1, source: { format: "glb", path: "models/buildings/commercial/2026-commercial-building-7.glb", emissiveBase: 0.7 } },
-      { key: "s_02_11", weight: 1, source: { format: "glb", path: "models/buildings/commercial/2026-commercial-building-8.glb", emissiveBase: 0.7 } },
-      { key: "s_02_12", weight: 1, source: { format: "glb", path: "models/buildings/commercial/2026-commercial-building-9.glb", emissiveBase: 0.7 } },
-      { key: "s_02_13", weight: 1, source: { format: "glb", path: "models/buildings/commercial/2026-commercial-building-10.glb", emissiveBase: 0.7 } },
+      {
+        key: "s_02_04",
+        weight: 1,
+        source: {
+          format: "glb",
+          path: "models/buildings/commercial/2026-commercial-building-1.glb",
+          emissiveBase: 0.9,
+        },
+      },
+      {
+        key: "s_02_05",
+        weight: 1,
+        source: {
+          format: "glb",
+          path: "models/buildings/commercial/2026-commercial-building-2.glb",
+          emissiveBase: 0.9,
+        },
+      },
+      {
+        key: "s_02_06",
+        weight: 1,
+        source: {
+          format: "glb",
+          path: "models/buildings/commercial/2026-commercial-building-3.glb",
+          emissiveBase: 0.9,
+        },
+      },
+      {
+        key: "s_02_07",
+        weight: 1,
+        source: {
+          format: "glb",
+          path: "models/buildings/commercial/2026-commercial-building-4.glb",
+          emissiveBase: 0.9,
+        },
+      },
+      {
+        key: "s_02_08",
+        weight: 1,
+        source: {
+          format: "glb",
+          path: "models/buildings/commercial/2026-commercial-building-5.glb",
+          emissiveBase: 0.9,
+        },
+      },
+      {
+        key: "s_02_09",
+        weight: 1,
+        source: {
+          format: "glb",
+          path: "models/buildings/commercial/2026-commercial-building-6.glb",
+          emissiveBase: 0.9,
+        },
+      },
+      {
+        key: "s_02_10",
+        weight: 1,
+        source: {
+          format: "glb",
+          path: "models/buildings/commercial/2026-commercial-building-7.glb",
+          emissiveBase: 0.7,
+        },
+      },
+      {
+        key: "s_02_11",
+        weight: 1,
+        source: {
+          format: "glb",
+          path: "models/buildings/commercial/2026-commercial-building-8.glb",
+          emissiveBase: 0.9,
+        },
+      },
+      {
+        key: "s_02_12",
+        weight: 1,
+        source: {
+          format: "glb",
+          path: "models/buildings/commercial/2026-commercial-building-9.glb",
+          emissiveBase: 1,
+        },
+      },
+      {
+        key: "s_02_13",
+        weight: 1,
+        source: {
+          format: "glb",
+          path: "models/buildings/commercial/2026-commercial-building-10.glb",
+          emissiveBase: 0.9,
+        },
+      },
     ],
   },
   {
@@ -82,8 +183,8 @@ const SMALL_SERIES: BuildingSeries[] = [
         weight: 1,
         source: {
           format: "glb",
-          path: "models/buildings/industrial/s_03_04-new-building.glb",
-          emissiveBase: 0.5,
+          path: "models/buildings/commercial/2026-commercial-building-7.glb",
+          emissiveBase: 0.7,
         },
       },
       {
@@ -91,8 +192,8 @@ const SMALL_SERIES: BuildingSeries[] = [
         weight: 1,
         source: {
           format: "glb",
-          path: "models/buildings/industrial/s_03_05-new-building.glb",
-          emissiveBase: 0.7,
+          path: "models/buildings/commercial/2026-commercial-building-6.glb",
+          emissiveBase: 0.9,
         },
       },
       {
@@ -100,8 +201,8 @@ const SMALL_SERIES: BuildingSeries[] = [
         weight: 1,
         source: {
           format: "glb",
-          path: "models/buildings/industrial/s_03_06-new-building.glb",
-          emissiveBase: 0.7,
+          path: "models/buildings/commercial/2026-commercial-building-10.glb",
+          emissiveBase: 0.9,
         },
       },
       {
@@ -109,8 +210,8 @@ const SMALL_SERIES: BuildingSeries[] = [
         weight: 1,
         source: {
           format: "glb",
-          path: "models/buildings/industrial/s_03_07-new-building.glb",
-          emissiveBase: 0.7,
+          path: "models/buildings/commercial/2026-commercial-building-8.glb",
+          emissiveBase: 0.9,
         },
       },
       {
@@ -121,8 +222,8 @@ const SMALL_SERIES: BuildingSeries[] = [
         weight: 1,
         source: {
           format: "glb",
-          path: "models/buildings/industrial/s_03_08-new-building.031.glb",
-          emissiveBase: 0.7,
+          path: "models/buildings/commercial/2026-commercial-building-9.glb",
+          emissiveBase: 1,
         },
       },
     ],

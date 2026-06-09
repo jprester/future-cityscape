@@ -54,7 +54,7 @@ export const ENVIRONMENT_NIGHT: EnvironmentConfig = {
   spotLights: true,
   streetLights: true,
   shadows: false,
-  environmentIntensity: 0,
+  environmentIntensity: 0.3,
   fog: {
     // Thinner than before (0.0011) so the large city recedes into a hazy depth
     // — distant towers stay faintly visible as silhouettes instead of being
@@ -65,14 +65,14 @@ export const ENVIRONMENT_NIGHT: EnvironmentConfig = {
   },
   sun: {
     color: COLORS.night.sun,
-    intensity: 0.1,
+    intensity: 0.4,
     x: 1,
     y: 0.5,
     z: 0.25,
   },
   ambient: {
     color: COLORS.night.ambient,
-    intensity: 0.2,
+    intensity: 0.4,
   },
 };
 
