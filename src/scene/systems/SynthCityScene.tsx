@@ -121,6 +121,13 @@ export default function SynthCityScene() {
     <>
       <Canvas
         style={{ position: "fixed", inset: 0, zIndex: 0 }}
+        // Cap the device-pixel-ratio. R3F otherwise renders at the display's
+        // native DPR (2× on Retina ≈ 4× the pixels), and every full-screen
+        // post-processing pass (bloom, N8AO, FXAA, tonemapping…) pays that cost
+        // per pixel — the scene is fill-rate bound, not geometry bound. Capping
+        // at 1.5 roughly halves fragment work on Retina with little visible
+        // change. Lower the cap to 1 for an even bigger GPU/heat saving.
+        dpr={[1, 1.5]}
         frameloop={settings.frameRateLimit > 0 ? "demand" : "always"}
       >
         <SceneContent showPerfMonitor={showPerfMonitor} onStats={setPerfStats} />
