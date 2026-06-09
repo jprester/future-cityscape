@@ -131,6 +131,7 @@ export function createMaterialFactories(): MaterialFactoryMap {
 
     factories[adMatKey(ad.id, "holo")] = (getTexture) =>
       new MeshPhongMaterial({
+        color: 0x000000,
         emissive: 0xddf6ff,
         emissiveMap: getTexture(texKey),
         emissiveIntensity: 0.25, // Overwritten by BASE_EMISSIVE_INTENSITIES × preset

@@ -108,8 +108,8 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
     height: 70,
     offsetOut: 22,
     y: 170,
-    style: "billboard",
-    emissiveIntensity: 0.7,
+    style: "holo",
+    emissiveIntensity: 0.4,
   }, // cdbj
   {
     gi: 8,
