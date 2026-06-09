@@ -6,9 +6,10 @@ import {
   getRotationFromNoise,
 } from "../../utils";
 import {
-  NEW_TOWER_SERIES,
+  RESIDENTIAL_SERIES,
+  COMMERCIAL_SERIES,
   SKYSCRAPER_SERIES,
-  getEmbeddedMaterialKeys,
+  TOWER_SERIES,
 } from "../buildingRegistry";
 import type { BuildingVariant } from "../buildingRegistry";
 import { CITY_BLOCK_SIZE, ROAD_WIDTH } from "../world";
@@ -23,65 +24,24 @@ function fixNoise(noise: number): number {
   return clamp(mapRange(noise, 0.2, 0.75, 0, 0.9999), 0, 0.9999);
 }
 
-// Small-building models that ship with embedded GLB materials (e.g. the nicer
-// s_03_04–07 industrial buildings). These must use their "__embedded_{key}"
-// material — the shared OBJ texture material would render them wrong.
-const EMBEDDED_MODEL_KEYS = getEmbeddedMaterialKeys();
-
-function getBuildingMatKey(noise: number): string {
-  const mats = [
-    // "building_01", // temporarily removed
-    "building_02",
-    "building_03",
-    // "building_04",
-    "building_05",
-  ];
-  return pickFromNoise(mats, noise);
-}
-
 const NOISEFACTOR = 0.0017;
 const CELL_SIZE = CITY_BLOCK_SIZE + ROAD_WIDTH;
 
-// Residential (s_01) OBJ windows read slightly small at human scale, so enlarge
-// those buildings uniformly a touch. Windows are baked into the model UVs, so a
-// uniform scale enlarges the windows proportionally. (Applies to OBJ small
-// buildings only — the GLB commercial/industrial models are pre-sized.)
-const SMALL_BUILDING_WINDOW_SCALE = 1.08;
-
-// Commercial blocks now use the 10 GLB commercial buildings the user added
-// (replacing the old OBJ s_02_01–03). Industrial blocks use those same models
-// plus the existing s_03_04–08 GLBs for extra variety. Both lists feed
-// pickFromNoise in selectSmallBuilding.
-const COMMERCIAL_BUILDINGS = [
-  "s_02_04",
-  "s_02_05",
-  "s_02_06",
-  "s_02_07",
-  "s_02_08",
-  "s_02_09",
-  "s_02_10",
-  "s_02_11",
-  "s_02_12",
-  "s_02_13",
-];
-const INDUSTRIAL_BUILDINGS = [
-  ...COMMERCIAL_BUILDINGS,
-  "s_03_04",
-  "s_03_05",
-  "s_03_06",
-  "s_03_07",
-  "s_03_08",
-];
+// Residential & commercial blocks each place 4 noise-picked GLB models per
+// block. The candidate keys are derived straight from the registry so adding a
+// model there is the only edit needed. All four categories are GLB with
+// embedded materials, so placed buildings always use their "__embedded_{key}".
+const RESIDENTIAL_KEYS = RESIDENTIAL_SERIES.variants.map((v) => v.key);
+const COMMERCIAL_KEYS = COMMERCIAL_SERIES.variants.map((v) => v.key);
 
 // ── City template ────────────────────────────────────────────────────────────
 //
 // Each character defines what occupies a city block:
 //
 //   .  = empty (no buildings)
-//   r  = residential (s_01 series)
-//   c  = commercial  (s_02 series)
-//   i  = industrial  (s_03 series)
-//   m  = mixed — noise picks residential/commercial/industrial
+//   r  = residential block (4 noise-picked residential GLBs)
+//   c  = commercial block  (4 noise-picked commercial GLBs)
+//   m  = mixed — noise picks residential OR commercial per sub-building
 //   T  = tower — assigns the next UNUSED tower model (each placed once, no repeats)
 //   A-L = specific tower variant (A=tower_01, B=tower_02, ... L=tower_12)
 //   S  = skyscraper — assigns the next UNUSED skyscraper model (each placed once)
@@ -132,17 +92,16 @@ function dedupeByModel(variants: BuildingVariant[]): string[] {
 // simply unused — reserved here to avoid disturbing the existing skyline.
 const RESERVED_SKYSCRAPER = "skyscraper_06";
 
-const TOWER_POOL = dedupeByModel(NEW_TOWER_SERIES.variants);
+const TOWER_POOL = dedupeByModel(TOWER_SERIES.variants);
 const SKYSCRAPER_POOL = dedupeByModel(SKYSCRAPER_SERIES.variants).filter(
   (key) => key !== RESERVED_SKYSCRAPER,
 );
 
 // Tight, dense downtown so the skyline reads full from the roof: a mixed (m)
-// core fills the city — residential/commercial/industrial picked by noise, so
-// every small-building series (incl. the nicer s_03_04–07 GLBs) shows up — with
-// a close ring of 11 unique skyscrapers (S, ring 3) and 12 unique towers
-// (T, ring 4) as the dominant skyline. Residential (r) sits only on the outer
-// rings — the fog-edge outskirts. Each S/T is a distinct model, placed once.
+// core fills the city — residential/commercial picked by noise — interleaved
+// with a close ring of unique skyscrapers (S) and unique towers (T) as the
+// dominant skyline. Residential (r) sits only on the outer rings — the
+// fog-edge outskirts. Each S/T is a distinct model, placed at most once.
 const CITY_TEMPLATE = `
 . . . . . . . . . . . . . . . . .
 . r r r r r r r r r r r r r r r .
@@ -169,7 +128,6 @@ type BlockType =
   | "empty"
   | "residential"
   | "commercial"
-  | "industrial"
   | "mixed"
   | "tower"
   | "vantage";
@@ -220,9 +178,10 @@ function parseTemplate(template: string): ParsedBlock[][] {
         case "r":
           return { type: "residential" };
         case "c":
-          return { type: "commercial" };
+        // `i` (legacy "industrial") folds into commercial — the industrial
+        // category was retired; kept tolerant for any older layout JSON.
         case "i":
-          return { type: "industrial" };
+          return { type: "commercial" };
         case "m":
           return { type: "mixed" };
         case "T": {
@@ -524,29 +483,16 @@ function placeSmallBuildings(
 
       const type = selectSmallBuilding(blockType, typeNoise, subtypeNoise);
 
-      // Enlarge OBJ residential buildings uniformly so their windows read
-      // larger. GLB models (commercial/industrial) are pre-sized, so they skip
-      // this — applying it would just scale the whole embedded-material mesh.
-      const windowScale =
-        !EMBEDDED_MODEL_KEYS.has(type) && type.startsWith("s_01_")
-          ? SMALL_BUILDING_WINDOW_SCALE
-          : 1;
-
-      // GLB small buildings carry embedded materials; OBJ ones share a texture
-      // material picked by noise.
-      const matNoise = fixNoise(noise.noise(wx * -3, wz * -3));
-      const matKey = EMBEDDED_MODEL_KEYS.has(type)
-        ? `__embedded_${type}`
-        : getBuildingMatKey(matNoise);
-
+      // Every small building is a GLB with embedded materials. A light per-
+      // instance vertical scale (`scale`) adds height variety across the block.
       buildings.push({
         modelKey: type,
-        materialKey: matKey,
+        materialKey: `__embedded_${type}`,
         x: wx,
         z: wz,
-        scaleX: windowScale,
-        scaleY: scale * windowScale,
-        scaleZ: windowScale,
+        scaleX: 1,
+        scaleY: scale,
+        scaleZ: 1,
         rotationY: (rotate * Math.PI) / 180,
         gi,
         gj,
@@ -560,26 +506,17 @@ function selectSmallBuilding(
   typeNoise: number,
   subtypeNoise: number,
 ): string {
-  // For explicit types, use that series directly
-  // For "mixed", use noise to pick the series
-  let series: "residential" | "commercial" | "industrial";
-
+  // Explicit blocks use their category directly; "mixed" lets noise choose
+  // residential vs commercial per sub-building. subtypeNoise then picks the
+  // specific GLB variant from that category's registry list.
+  let series: "residential" | "commercial";
   if (blockType === "mixed") {
-    if (typeNoise < 0.4) series = "residential";
-    else if (typeNoise < 0.75) series = "commercial";
-    else series = "industrial";
+    series = typeNoise < 0.45 ? "residential" : "commercial";
   } else {
-    series = blockType as "residential" | "commercial" | "industrial";
+    series = blockType as "residential" | "commercial";
   }
 
-  switch (series) {
-    case "residential":
-      if (subtypeNoise < 0.33) return "s_01_01";
-      if (subtypeNoise < 0.66) return "s_01_02";
-      return "s_01_03";
-    case "commercial":
-      return pickFromNoise(COMMERCIAL_BUILDINGS, subtypeNoise);
-    case "industrial":
-      return pickFromNoise(INDUSTRIAL_BUILDINGS, subtypeNoise);
-  }
+  return series === "residential"
+    ? pickFromNoise(RESIDENTIAL_KEYS, subtypeNoise)
+    : pickFromNoise(COMMERCIAL_KEYS, subtypeNoise);
 }

@@ -32,349 +32,173 @@ export type BuildingSeries = {
 // ============================================================================
 // Registry Data
 // ============================================================================
+//
+// The scene has exactly FOUR building categories, all GLB models with embedded
+// materials, each living in its own subfolder under models/buildings/:
+//
+//   • residential — 4 per city block, noise-picked   (models/buildings/residential)
+//   • commercial  — 4 per city block, noise-picked   (models/buildings/commercial)
+//   • skyscraper  — 1 per block, each variant placed AT MOST ONCE in the scene
+//   • tower       — 1 per block, each variant placed AT MOST ONCE in the scene
+//
+// Placement logic lives in cityLayouts/generateLayout.ts. The old number-based
+// series (s_01/s_02/s_03 small, s_04 large, s_05 tower, s_06 slim, landmarks)
+// were retired — keys are now named by category. Runtime classification
+// elsewhere (smoke, wall ads, asset viewer) keys off the category PREFIX of the
+// model key (`residential_`, `commercial_`, `skyscraper_`, `tower_`), so keep
+// that prefix when adding variants.
 
-// Small buildings — used for asset pipeline derivation ONLY.
-// Runtime placement is driven by the city template in generateLayout.ts.
-const SMALL_SERIES: BuildingSeries[] = [
-  {
-    // Residential series
-    id: "01",
-    ads: ["ads_s_01_01", "ads_s_01_02"],
-    variants: [
-      {
-        key: "s_01_01",
-        weight: 1,
-        source: {
-          format: "obj",
-          path: "models/buildings/residential/s_01_01.obj",
-        },
-      },
-      {
-        key: "s_01_02",
-        weight: 1,
-        source: {
-          format: "obj",
-          path: "models/buildings/residential/s_01_02.obj",
-        },
-      },
-      {
-        key: "s_01_03",
-        weight: 1,
-        source: {
-          format: "obj",
-          path: "models/buildings/residential/s_01_03.obj",
-        },
-      },
-    ],
-  },
-  {
-    // Commercial series — the old OBJ-with-external-texture models
-    // (s_02_01–03) were replaced by 10 GLB commercial buildings the user
-    // added under models/buildings/commercial. Each carries embedded
-    // materials, sits at ground level (yMin≈0) and is ~32–65 u wide /
-    // ~100–220 u tall — the same size class as the s_03_04–08 GLBs, so they
-    // drop into the small-building instanced path at scale 1, no rotation.
-    id: "02",
-    ads: ["ads_s_02_01", "ads_s_02_02"],
-    variants: [
-      {
-        key: "s_02_04",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-1.glb",
-          emissiveBase: 0.9,
-        },
-      },
-      {
-        key: "s_02_05",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-2.glb",
-          emissiveBase: 0.9,
-        },
-      },
-      {
-        key: "s_02_06",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-3.glb",
-          emissiveBase: 0.9,
-        },
-      },
-      {
-        key: "s_02_07",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-4.glb",
-          emissiveBase: 0.9,
-        },
-      },
-      {
-        key: "s_02_08",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-5.glb",
-          emissiveBase: 0.9,
-        },
-      },
-      {
-        key: "s_02_09",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-6.glb",
-          emissiveBase: 0.9,
-        },
-      },
-      {
-        key: "s_02_10",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-7.glb",
-          emissiveBase: 0.7,
-        },
-      },
-      {
-        key: "s_02_11",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-8.glb",
-          emissiveBase: 0.9,
-        },
-      },
-      {
-        key: "s_02_12",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-9.glb",
-          emissiveBase: 1,
-        },
-      },
-      {
-        key: "s_02_13",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-10.glb",
-          emissiveBase: 0.9,
-        },
-      },
-    ],
-  },
-  {
-    // Industrial series — the old OBJ-with-external-texture models
-    // (s_03_01–03) were dropped per the user's request to stop using the
-    // textured-OBJ buildings. The s_03_04–08 GLBs (embedded materials) are
-    // kept and still appear in industrial blocks alongside the new
-    // commercial GLBs (see selectSmallBuilding in generateLayout.ts).
-    id: "03",
-    ads: ["ads_s_03_01", "ads_s_03_02"],
-    variants: [
-      {
-        key: "s_03_04",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-7.glb",
-          emissiveBase: 0.7,
-        },
-      },
-      {
-        key: "s_03_05",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-6.glb",
-          emissiveBase: 0.9,
-        },
-      },
-      {
-        key: "s_03_06",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-10.glb",
-          emissiveBase: 0.9,
-        },
-      },
-      {
-        key: "s_03_07",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-8.glb",
-          emissiveBase: 0.9,
-        },
-      },
-      {
-        // New commercial-look GLB the user added. Named to follow the GLB
-        // small-building slot convention (s_03_NN); it's offered in COMMERCIAL
-        // blocks via selectSmallBuilding (see generateLayout.ts).
-        key: "s_03_08",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/buildings/commercial/2026-commercial-building-9.glb",
-          emissiveBase: 1,
-        },
-      },
-    ],
-  },
-];
-
-// Large buildings — used for both asset derivation AND runtime selection
-export const LARGE_SERIES: BuildingSeries = {
-  id: "04",
-  ads: ["ads_s_04_01", "ads_s_04_02", "ads_s_04_03", "ads_s_04_04"],
+// ── Residential ─────────────────────────────────────────────────────────────
+// Low-rise GLB homes (~50–62 u wide, ~90–120 u tall). 4 per residential block.
+export const RESIDENTIAL_SERIES: BuildingSeries = {
+  id: "residential",
+  ads: ["ads_s_01_01", "ads_s_01_02"],
   variants: [
     {
-      key: "s_04_01",
-      weight: 22.5,
-      source: { format: "obj", path: "models/buildings/large/s_04_01.obj" },
-    },
-    {
-      key: "s_04_02",
-      weight: 22.5,
-      source: { format: "obj", path: "models/buildings/large/s_04_02.obj" },
-    },
-    // { key: "s_04_03", weight: 22.5 },
-    {
-      key: "s_04_03",
-      weight: 22.5,
+      key: "residential_01",
+      weight: 1,
       source: {
         format: "glb",
-        path: "models/buildings/large/sci-fi-corporate-building.glb",
-        emissiveBase: 2.0,
+        path: "models/buildings/residential/2026-residential-building-1.glb",
+        emissiveBase: 0.8,
       },
     },
-    // {
-    //   key: "s_04_04",
-    //   weight: 5,
-    //   source: {
-    //     format: "glb",
-    //     path: "models/glowing-industrial-building.glb",
-    //     emissiveBase: 1.5,
-    //   },
-    // },
-    // {
-    //   key: "s_04_07",
-    //   weight: 20,
-    //   source: {
-    //     format: "glb",
-    //     path: "models/brutalist-skyscraper-4.glb",
-    //     scale: 3.5,
-    //     emissiveBase: 2.0,
-    //   },
-    // },
-  ],
-};
-
-// Tower buildings — used for both asset derivation AND runtime selection
-export const TOWER_SERIES: BuildingSeries = {
-  id: "05",
-  ads: ["ads_s_05_01", "ads_s_05_02", "ads_s_05_03", "ads_s_05_04"],
-  variants: [
     {
-      key: "s_05_01",
-      weight: 31.7,
-      source: { format: "obj", path: "models/buildings/towers/s_05_01.obj" },
-    },
-    {
-      key: "s_05_03",
-      weight: 31.6,
-      source: { format: "obj", path: "models/buildings/towers/s_05_03.obj" },
-    },
-    {
-      key: "s_05_04",
-      weight: 31.7,
+      key: "residential_02",
+      weight: 1,
       source: {
         format: "glb",
-        path: "models/buildings/towers/new-massive-skyscraper.glb",
-        scale: 1.7,
-        emissiveBase: 2.0,
+        path: "models/buildings/residential/2026-residential-building-2.glb",
+        emissiveBase: 0.8,
+      },
+    },
+    {
+      key: "residential_03",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/residential/2026-residential-building-3.glb",
+        emissiveBase: 0.8,
+      },
+    },
+    {
+      key: "residential_04",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/residential/2026-residential-building-4.glb",
+        emissiveBase: 0.8,
       },
     },
   ],
 };
 
-// Slim tower buildings — tall, narrow footprint (same 2x2 sub-slot as small buildings).
-// Downtown-exclusive: only placed in the downtown district by the finite city generator.
-// Use embedded GLB materials. Adding a new slim tower = one entry here.
-export const SLIM_TOWER_SERIES: BuildingVariant[] = [
-  {
-    key: "s_06_01",
-    weight: 1,
-    source: {
-      format: "glb",
-      path: "models/buildings/slim-towers/brutalist-tower.glb",
-      scale: 1,
-      emissiveBase: 2.0,
+// ── Commercial ────────────────────────────────────────────────────────────────
+// Mid-rise GLB blocks (~32–65 u wide, ~100–220 u tall). 4 per commercial block.
+export const COMMERCIAL_SERIES: BuildingSeries = {
+  id: "commercial",
+  ads: ["ads_s_02_01", "ads_s_02_02"],
+  variants: [
+    {
+      key: "commercial_01",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-1.glb",
+        emissiveBase: 0.9,
+      },
     },
-  },
-  {
-    key: "s_06_02",
-    weight: 1,
-    source: {
-      format: "glb",
-      path: "models/buildings/slim-towers/dark_skyscraper_new2.glb",
-      scale: 1,
-      emissiveBase: 2.0,
+    {
+      key: "commercial_02",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-2.glb",
+        emissiveBase: 0.9,
+      },
     },
-  },
-  {
-    key: "s_06_03",
-    weight: 1,
-    source: {
-      format: "glb",
-      // Shares the skyscrapers asset (the old top-level models/ny-office-
-      // building.glb never existed → was 404ing; point at the real file).
-      path: "models/buildings/skyscrapers/ny-office-building.glb",
-      scale: 1,
-      emissiveBase: 2.0,
+    {
+      key: "commercial_03",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-3.glb",
+        emissiveBase: 0.9,
+      },
     },
-  },
-];
+    {
+      key: "commercial_04",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-4.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      key: "commercial_05",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-5.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      key: "commercial_06",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-6.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      key: "commercial_07",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-7.glb",
+        emissiveBase: 0.7,
+      },
+    },
+    {
+      key: "commercial_08",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-8.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      key: "commercial_09",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-9.glb",
+        emissiveBase: 1,
+      },
+    },
+    {
+      key: "commercial_10",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-10.glb",
+        emissiveBase: 0.9,
+      },
+    },
+  ],
+};
 
-// Landmark buildings — unique high-quality assets, one instance per type per city.
-// Placed in the downtown zone by the layout generator (guaranteed, noise-driven position).
-// Adding a new landmark = one entry here. No other changes needed.
-export const LANDMARK_SERIES: BuildingVariant[] = [
-  {
-    key: "landmark_01",
-    weight: 1,
-    source: {
-      format: "glb",
-      path: "models/buildings/landmarks/hero-skyscraper.glb",
-      scale: 1.4,
-      emissiveBase: 1.0,
-    },
-  },
-  {
-    key: "landmark_02",
-    weight: 1,
-    source: {
-      format: "glb",
-      path: "models/buildings/landmarks/sci-fi-building-9_1.glb",
-      emissiveBase: 2.0,
-    },
-  },
-];
-
-// ── Concentric-city series (finite mode only) ──────────────────────────────
-
-// Skyscrapers — mid-to-tall buildings for financial/business zones.
-// All use embedded GLB materials. Adding a new skyscraper = one entry here.
+// ── Skyscrapers ───────────────────────────────────────────────────────────────
+// Mid-to-tall financial/business towers. One variant per block, placed at most
+// once each (the generator draws from a de-duplicated pool). Some variants point
+// at the same GLB on purpose — the dedupe keeps only the first.
 export const SKYSCRAPER_SERIES: BuildingSeries = {
   id: "skyscraper",
-  ads: ["ads_s_04_01", "ads_s_04_02", "ads_s_04_03", "ads_s_04_04"],
+  ads: [],
   variants: [
     {
       key: "skyscraper_01",
@@ -436,7 +260,6 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        // path: "models/buildings/skyscrapers/quality-skyscraper-office.glb",
         path: "models/buildings/skyscrapers/ny-office-building.glb",
         emissiveBase: 1.5,
         scale: 1.2,
@@ -518,9 +341,6 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       },
     },
     {
-      // New user-added skyscraper. Unique GLB path → adds one entry to the
-      // de-duplicated SKYSCRAPER_POOL, so the template gains one extra `S` cell
-      // to place it (see CITY_TEMPLATE in generateLayout.ts).
       key: "skyscraper_16",
       weight: 1,
       source: {
@@ -532,11 +352,12 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
   ],
 };
 
-// New towers — massive downtown-only buildings for the concentric city center.
-// All use embedded GLB materials. Adding a new tower = one entry here.
-export const NEW_TOWER_SERIES: BuildingSeries = {
-  id: "new_tower",
-  ads: ["ads_s_05_01", "ads_s_05_02", "ads_s_05_03", "ads_s_05_04"],
+// ── Towers ────────────────────────────────────────────────────────────────────
+// The biggest downtown structures. One variant per block, placed at most once
+// each (de-duplicated pool, like skyscrapers).
+export const TOWER_SERIES: BuildingSeries = {
+  id: "tower",
+  ads: [],
   variants: [
     {
       key: "tower_01",
@@ -593,7 +414,6 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
         path: "models/buildings/towers/lz-tower-4.glb",
         emissiveBase: 2.0,
       },
-      // rotation: { y: Math.PI / 2 },
     },
     {
       key: "tower_07",
@@ -620,7 +440,6 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        // path: "models/buildings/towers/rounded-scifi-tower.glb",
         path: "models/buildings/skyscrapers/quality-skyscraper-curved.glb",
         emissiveBase: 2.0,
       },
@@ -657,20 +476,20 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
   ],
 };
 
+// All four categories, in one place for the asset-pipeline helpers.
+const ALL_SERIES: BuildingSeries[] = [
+  RESIDENTIAL_SERIES,
+  COMMERCIAL_SERIES,
+  SKYSCRAPER_SERIES,
+  TOWER_SERIES,
+];
+
 // ============================================================================
 // Asset Pipeline Helpers
 // ============================================================================
 
 function getAllVariants(): BuildingVariant[] {
-  return [
-    ...SMALL_SERIES.flatMap((s) => s.variants),
-    ...LARGE_SERIES.variants,
-    ...TOWER_SERIES.variants,
-    ...SLIM_TOWER_SERIES,
-    ...LANDMARK_SERIES,
-    ...SKYSCRAPER_SERIES.variants,
-    ...NEW_TOWER_SERIES.variants,
-  ];
+  return ALL_SERIES.flatMap((s) => s.variants);
 }
 
 /** Default rotation offsets per model key (only includes models with rotation defined) */
@@ -752,21 +571,7 @@ export function getBuildingManifestEntries(): Record<
   return entries;
 }
 
-/** Set of landmark model keys — legacy, kept for procedural mode compat */
-export function getLandmarkModelKeys(): Set<string> {
-  return new Set(LANDMARK_SERIES.map((v) => v.key));
-}
-
-/** Tower model keys for the concentric city — no instance cap */
-export function getNewTowerModelKeys(): string[] {
-  return NEW_TOWER_SERIES.variants.map((v) => v.key);
-}
-
 /** All ad model keys across all series */
 export function getAllAdModelKeys(): string[] {
-  return [
-    ...SMALL_SERIES.flatMap((s) => s.ads),
-    ...LARGE_SERIES.ads,
-    ...TOWER_SERIES.ads,
-  ];
+  return ALL_SERIES.flatMap((s) => s.ads);
 }

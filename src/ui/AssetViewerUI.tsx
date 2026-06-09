@@ -6,13 +6,10 @@ const ALL_KEYS = getAllModelKeys();
 const EMBEDDED = getEmbeddedMaterialKeys();
 
 function getSeriesLabel(key: string): string {
-  if (key.startsWith("s_01")) return "Small (01)";
-  if (key.startsWith("s_02")) return "Small (02)";
-  if (key.startsWith("s_03")) return "Small (03)";
-  if (key.startsWith("s_04")) return "Large (04)";
-  if (key.startsWith("s_05")) return "Tower (05)";
-  if (key.startsWith("s_06")) return "Slim Tower (06)";
-  if (key.startsWith("landmark_")) return "Landmark";
+  if (key.startsWith("residential_")) return "Residential";
+  if (key.startsWith("commercial_")) return "Commercial";
+  if (key.startsWith("skyscraper_")) return "Skyscraper";
+  if (key.startsWith("tower_")) return "Tower";
   return "Unknown";
 }
 

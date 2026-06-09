@@ -187,18 +187,22 @@ export function FiniteCitySystem() {
       return (seed - 1) / 2147483646;
     };
     // Steam plumes sit on (a) the big downtown towers/skyscrapers everywhere
-    // and (b) the taller GLB commercial/industrial fill (`s_02_`/`s_03_`,
-    // ~100–220u) — but the mid-rise plumes are gated to the DOWNTOWN CORE only.
-    // Across the expanded residential outskirts these plumes used to pile into
-    // a flat "fog deck" on the horizon; keeping mid-rise steam inside the core
-    // radius re-introduces street-level steam without bringing the deck back.
+    // and (b) the taller commercial GLB fill (`commercial_`, ~100–220u) — but
+    // the mid-rise plumes are gated to the DOWNTOWN CORE only. Across the
+    // expanded residential outskirts these plumes used to pile into a flat
+    // "fog deck" on the horizon; keeping mid-rise steam inside the core radius
+    // re-introduces street-level steam without bringing the deck back.
     const core = layout.vantage ?? { x: 0, z: 0 };
     const CORE_SMOKE_RADIUS = 6 * (CITY_BLOCK_SIZE + ROAD_WIDTH); // ~912u
     const coreR2 = CORE_SMOKE_RADIUS * CORE_SMOKE_RADIUS;
     for (const b of layout.buildings) {
-      const isTall = !b.modelKey.startsWith("s_");
-      const isMidRise =
-        b.modelKey.startsWith("s_02_") || b.modelKey.startsWith("s_03_");
+      // Tall = the 1-per-block skyscrapers/towers (big high plume everywhere);
+      // mid-rise = the taller commercial GLBs (smaller rooftop plume, core only);
+      // residential is low-rise and gets no steam.
+      const isTall =
+        b.modelKey.startsWith("skyscraper_") ||
+        b.modelKey.startsWith("tower_");
+      const isMidRise = b.modelKey.startsWith("commercial_");
 
       // Per-tier plume settings: tall towers get the big high plume; mid-rise
       // blocks get a smaller, lower plume near their roofline, and only when
