@@ -269,7 +269,7 @@ export function FiniteCitySystem() {
     for (let x = firstRoad(minX); x <= maxX; x += CELL) {
       for (let z = firstRoad(minZ); z <= maxZ; z += CELL) {
         // ~12% of road crossings get a beam (denser searchlight field).
-        if (seededRandom() > 0.12) continue;
+        if (seededRandom() > 0.25) continue;
         const matKey = spotMats[Math.floor(seededRandom() * spotMats.length)];
         const w = 7 + seededRandom() * 5; // width scale (≈28–48 u, fuller soft shaft)
         const h = 14 + seededRandom() * 8; // height scale (≈700–1100 u shaft)
