@@ -23,6 +23,7 @@ import {
   FiniteCityWallAds,
   resolveManualWallAds,
   resolveProceduralWallAds,
+  resolveSmallSlotAdsProcedural,
 } from "../wallAds";
 
 type GroundLight = {
@@ -297,18 +298,29 @@ export function FiniteCitySystem() {
     return spots;
   }, [layout, settings.worldSeed]);
 
-  // Wall ads come from two systems:
-  //   • Manual list (src/scene/wallAds/manual.ts) — explicit per-building
-  //     ads for unique towers / skyscrapers.
-  //   • Procedural (resolveProceduralWallAds) — low-density signage on
-  //     small buildings (s_01/s_02/s_03), seeded by worldSeed.
+  // Wall ads come from three systems:
+  //   • Manual list (src/scene/wallAds/manual.ts) — hand-calibrated hero ads
+  //     on the unique towers / skyscrapers (deliberately NOT procedural:
+  //     prominent buildings are decorated by hand).
+  //   • Procedural small signs (resolveProceduralWallAds) — street-level
+  //     signage on residential/commercial buildings, seeded by worldSeed.
+  //   • Procedural slot ads (resolveSmallSlotAdsProcedural) — dense stacked
+  //     signs on residential/commercial walls, placed into flat-wall slots
+  //     found by scanning the loaded geometry — so it can only run once
+  //     assets are ready (launchReady).
+  //   Tower/skyscraper company logos are MANUAL too: generated logo textures
+  //   placed via `pneonKey` entries in the manual list.
   const wallAdStates = useMemo(() => {
     if (!layout) return [];
+    const assets = launchReady ? gameRef.current?.assets : null;
     return [
       ...resolveManualWallAds(layout),
       ...resolveProceduralWallAds(layout, settings.worldSeed),
+      ...(assets?.loaded
+        ? resolveSmallSlotAdsProcedural(layout, settings.worldSeed, assets)
+        : []),
     ];
-  }, [layout, settings.worldSeed]);
+  }, [layout, settings.worldSeed, launchReady, gameRef]);
 
   // Generate ground uplights at a subset of building positions
   const groundLights: GroundLight[] = useMemo(() => {

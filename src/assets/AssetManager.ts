@@ -86,6 +86,51 @@ function pickWindowTint(seed: string): Color {
     .multiplyScalar(brightness);
 }
 
+// ── Per-INSTANCE emissive variation ──────────────────────────────────────────
+// The palette above varies emissive per MATERIAL, but every InstancedMesh copy
+// of a model shares that material — identical twins glow identically, the last
+// big "synth render" tell. This shader patch multiplies the emissive by a
+// per-instance `instanceEmissive` vec3 attribute (written alongside the
+// instance matrices in useBuildingInstances). instanceColor can't do this:
+// three only applies it to diffuse. Guarded by USE_INSTANCING so the same
+// material on a regular Mesh (asset viewer) compiles to the stock shader and
+// is untouched — important because a missing attribute would read as black.
+function patchInstanceEmissive(mat: Material): void {
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+#ifdef USE_INSTANCING
+	attribute vec3 instanceEmissive;
+	varying vec3 vInstanceEmissive;
+#endif`,
+      )
+      .replace(
+        "#include <begin_vertex>",
+        `#include <begin_vertex>
+#ifdef USE_INSTANCING
+	vInstanceEmissive = instanceEmissive;
+#endif`,
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+#ifdef USE_INSTANCING
+	varying vec3 vInstanceEmissive;
+#endif`,
+      )
+      .replace(
+        "vec3 totalEmissiveRadiance = emissive;",
+        `vec3 totalEmissiveRadiance = emissive;
+#ifdef USE_INSTANCING
+	totalEmissiveRadiance *= vInstanceEmissive;
+#endif`,
+      );
+  };
+}
+
 export type AssetManagerConfig = {
   basePath?: string;
   cityBlockSize: number;
@@ -505,6 +550,9 @@ export class AssetManager {
         mat.emissiveMap.minFilter = LinearFilter;
         mat.emissiveMap.magFilter = LinearFilter;
         mat.emissiveMap.needsUpdate = true;
+
+        // Per-instance emissive variation when this material is instanced
+        patchInstanceEmissive(material);
       } else if ("emissiveIntensity" in mat) {
         // Even without a map, normalize the intensity for consistent preset control
         mat.emissiveIntensity = 1.0;

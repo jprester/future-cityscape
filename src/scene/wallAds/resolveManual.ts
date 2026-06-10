@@ -1,6 +1,7 @@
 import type { FiniteCityLayout } from "../../config/cityLayouts";
 import { adMatKey, findAdMeta } from "../../config/ads";
 import { WALL_AD_DEFAULTS, WALL_ADS_MANUAL } from "./manual";
+import { getProceduralAdMeta } from "./proceduralNeon";
 import type { WallAd } from "./types";
 
 /**
@@ -33,10 +34,25 @@ export function resolveManualWallAds(layout: FiniteCityLayout): WallAd[] {
       continue;
     }
 
-    const meta = findAdMeta(entry.adId);
-    if (!meta) {
-      console.warn(`[WALL_ADS_MANUAL] Unknown adId: ${entry.adId}`);
-      continue;
+    // Either a code-generated neon/logo texture (pneonKey) or an ad image.
+    let matKey: string;
+    let aspect: number;
+    if (entry.pneonKey !== undefined) {
+      const meta = getProceduralAdMeta(entry.pneonKey);
+      if (!meta) {
+        console.warn(`[WALL_ADS_MANUAL] Unknown pneonKey: ${entry.pneonKey}`);
+        continue;
+      }
+      matKey = meta.key;
+      aspect = meta.aspect;
+    } else {
+      const meta = entry.adId !== undefined ? findAdMeta(entry.adId) : undefined;
+      if (!meta) {
+        console.warn(`[WALL_ADS_MANUAL] Unknown adId: ${entry.adId}`);
+        continue;
+      }
+      matKey = adMatKey(meta.id, entry.style ?? "holo");
+      aspect = meta.aspect;
     }
 
     const style = entry.style ?? "holo";
@@ -45,7 +61,7 @@ export function resolveManualWallAds(layout: FiniteCityLayout): WallAd[] {
     const offsetSide = entry.offsetSide ?? 0;
     const y = entry.y ?? WALL_AD_DEFAULTS.y;
     const height = entry.height ?? WALL_AD_DEFAULTS.height;
-    const width = entry.width ?? height * meta.aspect;
+    const width = entry.width ?? height * aspect;
 
     // Face index → angle around Y. The plane faces +Z by default; we
     // rotate it so its normal points outward from the chosen building face,
@@ -64,8 +80,8 @@ export function resolveManualWallAds(layout: FiniteCityLayout): WallAd[] {
     const isBillboard = style === "billboard";
 
     ads.push({
-      matKey: adMatKey(entry.adId, style),
-      aspect: meta.aspect,
+      matKey,
+      aspect,
       x: b.x + outX * offsetOut + tangentX * offsetSide,
       y,
       z: b.z + outZ * offsetOut + tangentZ * offsetSide,

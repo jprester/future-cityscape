@@ -1,5 +1,10 @@
 import { useRef, useEffect, useCallback, useState } from "react";
-import { InstancedMesh, Object3D } from "three";
+import {
+  DynamicDrawUsage,
+  InstancedBufferAttribute,
+  InstancedMesh,
+  Object3D,
+} from "three";
 import type { BufferGeometry, Material } from "three";
 import {
   getAllModelKeys,
@@ -53,6 +58,54 @@ function getComboKey(modelKey: string, materialKey: string): string {
   return `${modelKey}:${materialKey}`;
 }
 
+// ── Per-instance emissive variation ─────────────────────────────────────────
+// Instanced copies of a model share one embedded material, so without this
+// every twin glows with identical windows. Each instance gets a deterministic
+// emissive multiplier (brightness + a slight warm↔cool shift) written into an
+// `instanceEmissive` vec3 attribute that AssetManager's shader patch reads.
+// Seeded from the building's world position so the skyline is stable across
+// reloads and re-culls (instance SLOTS reshuffle every camera move, so this is
+// rewritten alongside the matrices — it must key off the building, not the slot).
+const EMISSIVE_BRIGHTNESS_MIN = 0.55;
+const EMISSIVE_BRIGHTNESS_MAX = 1.5;
+const EMISSIVE_WARM_COOL_SHIFT = 0.18;
+
+/** Deterministic 0..1 hash from a string (FNV-1a folded to a float). */
+function hash01(str: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
+const emissiveVariationCache = new WeakMap<
+  BuildingDescriptor,
+  [number, number, number]
+>();
+
+function getEmissiveVariation(
+  building: BuildingDescriptor,
+): [number, number, number] {
+  let v = emissiveVariationCache.get(building);
+  if (!v) {
+    const seed = `${Math.round(building.position.x)}|${Math.round(building.position.z)}`;
+    const brightness =
+      EMISSIVE_BRIGHTNESS_MIN +
+      hash01(seed) * (EMISSIVE_BRIGHTNESS_MAX - EMISSIVE_BRIGHTNESS_MIN);
+    // -1 (cool) .. +1 (warm)
+    const warm = (hash01(seed + "#t") - 0.5) * 2;
+    v = [
+      brightness * (1 + EMISSIVE_WARM_COOL_SHIFT * warm),
+      brightness,
+      brightness * (1 - EMISSIVE_WARM_COOL_SHIFT * warm),
+    ];
+    emissiveVariationCache.set(building, v);
+  }
+  return v;
+}
+
 export function useBuildingInstances(assets: AssetGetter | null) {
   const instancedMeshesRef = useRef<Map<string, InstancedMesh>>(new Map());
   const initializedRef = useRef(false);
@@ -92,6 +145,18 @@ export function useBuildingInstances(assets: AssetGetter | null) {
         // Create a single InstancedMesh for this model (all instances use the same embedded material)
         // Use a special combo key that maps any material to the embedded one
         const comboKey = getComboKey(modelKey, embeddedMaterialKey);
+        // Per-instance emissive multiplier, read by the AssetManager shader
+        // patch. Lives on the geometry, which is safe here because the
+        // embedded path creates exactly one InstancedMesh per model geometry
+        // (unlike the OBJ path, where one geometry is shared by 10 meshes).
+        if (!geometry.getAttribute("instanceEmissive")) {
+          const attr = new InstancedBufferAttribute(
+            new Float32Array(MAX_INSTANCES_PER_COMBO * 3).fill(1),
+            3,
+          );
+          attr.setUsage(DynamicDrawUsage);
+          geometry.setAttribute("instanceEmissive", attr);
+        }
         const instancedMesh = new InstancedMesh(
           geometry,
           material,
@@ -175,6 +240,10 @@ export function useBuildingInstances(assets: AssetGetter | null) {
         continue;
       }
 
+      const emissiveAttr = instancedMesh.geometry.getAttribute(
+        "instanceEmissive",
+      ) as InstancedBufferAttribute | undefined;
+
       for (let i = 0; i < count; i++) {
         const building = comboBuildings[i];
         const obj = tempObject.current;
@@ -195,9 +264,17 @@ export function useBuildingInstances(assets: AssetGetter | null) {
         obj.updateMatrix();
 
         instancedMesh.setMatrixAt(i, obj.matrix);
+
+        if (emissiveAttr) {
+          const [r, g, b] = getEmissiveVariation(building);
+          emissiveAttr.setXYZ(i, r, g, b);
+        }
       }
 
       instancedMesh.instanceMatrix.needsUpdate = true;
+      if (emissiveAttr) {
+        emissiveAttr.needsUpdate = true;
+      }
     }
   }, []);
 

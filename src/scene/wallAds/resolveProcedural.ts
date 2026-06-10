@@ -73,7 +73,7 @@ function classifySignTier(modelKey: string): SignTier | null {
  * Each direction is the world Y rotation that orients a plane's +Z normal
  * outward toward that road.
  */
-function getRoadFacingDirs(x: number, z: number): number[] {
+export function getRoadFacingDirs(x: number, z: number): number[] {
   const localX = ((x % CELL_SIZE) + CELL_SIZE) % CELL_SIZE;
   const localZ = ((z % CELL_SIZE) + CELL_SIZE) % CELL_SIZE;
   const half = CITY_BLOCK_SIZE / 2;

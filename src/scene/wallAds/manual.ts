@@ -15,6 +15,17 @@ import type { WallAdManualEntry } from "./types";
 // and pick the visual treatment with `style` ("holo" default / "billboard").
 // Default placement values produce a reasonable ~70-unit-tall ad on the
 // south face; override any field to tune.
+//
+// COMPANY LOGOS — set `pneonKey` instead of `adId` to place a code-generated
+// neon logo (proceduralNeon.ts). 12 generated companies (00–11), three
+// matching variants each (same name + colors):
+//   • "pneon_logo_t_NN" — channel-letter wordmark, 4:1 (SONY/TRUIST crowns;
+//     a height of ~20 reads well at a roofline)
+//   • "pneon_logo_w_NN" — glyph + name lockup, 2:1
+//   • "pneon_logo_v_NN" — letters stacked vertically, 1:4 (corner edges)
+// The generated signs ("pneon_v_NN"/"pneon_h_NN") work here too. `style` is
+// ignored for pneon entries. Example — wordmark at a tower's roofline:
+//   { gi: 9, gj: 7, pneonKey: "pneon_logo_t_02", face: 2, height: 22, y: 320 },
 
 export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
   // Slim tower at (gi=5, gj=5) — four-sided billboard ring at the top

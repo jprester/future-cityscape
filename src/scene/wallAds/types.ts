@@ -20,8 +20,15 @@ export type WallAdManualEntry = {
   gi: number;
   /** Grid row from CITY_TEMPLATE */
   gj: number;
-  /** Which ad image to display — the id from ADS_META (config/ads.ts). */
-  adId: number;
+  /** Which ad image to display — the id from ADS_META (config/ads.ts).
+   *  Either this or `pneonKey` must be set. */
+  adId?: number;
+  /** Code-generated neon/logo texture instead of an ad image — a key from
+   *  proceduralNeon.ts (e.g. "pneon_logo_t_03" for company 03's wordmark,
+   *  "pneon_logo_w_03" glyph+name, "pneon_logo_v_03" vertical letters).
+   *  Takes precedence over adId; `style` is ignored (the generated material
+   *  is used as-is). */
+  pneonKey?: string;
   /** Visual style:
    *   • "holo" (default) — semi-transparent additive hologram
    *   • "billboard"      — opaque self-illuminated LED panel

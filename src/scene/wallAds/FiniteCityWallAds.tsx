@@ -9,6 +9,7 @@ import {
 import type { Material } from "three";
 import { useFrame } from "@react-three/fiber";
 import type { GameRuntime } from "../../types/game";
+import { getProceduralAdMaterial, tickNeonFlicker } from "./proceduralNeon";
 import type { WallAd } from "./types";
 
 /**
@@ -43,12 +44,14 @@ export function FiniteCityWallAds({
   game: GameRuntime | null;
   visibility: { ads: boolean };
 }) {
-  // Tick per-ad update callbacks (e.g. texture cycling) each frame. Only the
-  // individual-mesh fallback ads can carry these.
-  useFrame(() => {
+  // Tick per-ad update callbacks (e.g. texture cycling) each frame — only the
+  // individual-mesh fallback ads carry these — plus the procedural neon
+  // flicker animation (which mutates shared materials, so it stays instanced).
+  useFrame(({ clock }) => {
     for (const ad of wallAdStates) {
       ad.update?.();
     }
+    tickNeonFlicker(clock.elapsedTime);
   });
 
   // Shared unit plane geometry — instances/meshes use scale to set dimensions.
@@ -82,7 +85,11 @@ export function FiniteCityWallAds({
     const dummy = new Object3D();
     const meshes: InstancedMesh[] = [];
     for (const [matKey, ads] of byMat) {
-      const material = game.assets!.getMaterial(matKey) as Material | undefined;
+      // Procedural neon materials (canvas-generated, "pneon_" keys) live in
+      // their own registry; everything else comes from AssetManager.
+      const material =
+        getProceduralAdMaterial(matKey) ??
+        (game.assets!.getMaterial(matKey) as Material | undefined);
       if (!material) continue;
       const inst = new InstancedMesh(planeGeom, material, ads.length);
       // City-wide instanced mesh: skip frustum culling (its origin-based bounds
