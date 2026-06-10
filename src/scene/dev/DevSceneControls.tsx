@@ -3,6 +3,13 @@ import { useFrame } from "@react-three/fiber";
 import { useControls, folder } from "leva";
 import { Color, type AmbientLight, type DirectionalLight, FogExp2 } from "three";
 import { ENVIRONMENT_NIGHT } from "../../config/environments";
+import {
+  DEFAULT_FOG_HEIGHT_MAX,
+  DEFAULT_FOG_HEIGHT_MIN,
+  DEFAULT_FOG_HEIGHT_STRENGTH,
+  registerSceneHeightFog,
+  setHeightFogParams,
+} from "../effects/heightFog";
 import { useGameStore } from "../../context/GameContext";
 import type { VisibilitySettings } from "../../types/settings";
 
@@ -104,6 +111,25 @@ export default function DevSceneControls() {
         max: 0.01,
         step: 0.0001,
       },
+      // Ground-mist band (world Y). Full strength at/below min, gone at/above max.
+      fogHeightMin: {
+        value: ENVIRONMENT_NIGHT.fog.heightMin ?? DEFAULT_FOG_HEIGHT_MIN,
+        min: -200,
+        max: 400,
+        step: 1,
+      },
+      fogHeightMax: {
+        value: ENVIRONMENT_NIGHT.fog.heightMax ?? DEFAULT_FOG_HEIGHT_MAX,
+        min: -200,
+        max: 800,
+        step: 1,
+      },
+      fogHeightStrength: {
+        value: ENVIRONMENT_NIGHT.fog.heightStrength ?? DEFAULT_FOG_HEIGHT_STRENGTH,
+        min: 0,
+        max: 1,
+        step: 0.01,
+      },
     }),
   });
 
@@ -145,6 +171,15 @@ export default function DevSceneControls() {
       scene.fog.color.copy(tmpColor.current.set(values.fogColor));
       scene.fog.density = values.fogDensity;
     }
+
+    setHeightFogParams({
+      min: values.fogHeightMin,
+      max: values.fogHeightMax,
+      strength: values.fogHeightStrength,
+    });
+    // Catch any fog meshes added since the last registration so live tuning
+    // reaches them too (registerMaterial is a no-op for already-wired ones).
+    registerSceneHeightFog(scene);
   });
 
   return null;

@@ -12,6 +12,13 @@ import { usePlayerController } from "../../controllers/usePlayerController";
 import type { EnvironmentConfig } from "../../config/environments";
 import type { GameRuntime } from "../../types/game";
 import { EnhancedEffects, getPreset } from "../effects";
+import {
+  DEFAULT_FOG_HEIGHT_MAX,
+  DEFAULT_FOG_HEIGHT_MIN,
+  DEFAULT_FOG_HEIGHT_STRENGTH,
+  registerSceneHeightFog,
+  setHeightFogParams,
+} from "../effects/heightFog";
 
 // Dev-only Leva-driven effects wrapper. Excluded from prod (DEV is statically
 // false there, so this lazy branch and Leva are dropped from the bundle).
@@ -113,6 +120,11 @@ export function GameBridge() {
     }
 
     scene.fog = new FogExp2(environment.fog.color, environment.fog.density);
+    setHeightFogParams({
+      min: environment.fog.heightMin ?? DEFAULT_FOG_HEIGHT_MIN,
+      max: environment.fog.heightMax ?? DEFAULT_FOG_HEIGHT_MAX,
+      strength: environment.fog.heightStrength ?? DEFAULT_FOG_HEIGHT_STRENGTH,
+    });
   }, [environment, scene, gameRef]);
 
   useEffect(() => {
@@ -138,6 +150,12 @@ export function GameBridge() {
       // only scales the env contribution to the Phong ads/OBJ buildings.
       scene.environmentIntensity = environment.environmentIntensity;
     }
+
+    // Wire the shared height-fog uniforms into every fog material now that the
+    // city's meshes exist, so height fog tracks live param changes. Deferred a
+    // frame so meshes added later in this commit are included.
+    const raf = requestAnimationFrame(() => registerSceneHeightFog(scene));
+    return () => cancelAnimationFrame(raf);
   }, [environment, launchReady, scene, gameRef]);
 
   useFrame(() => {

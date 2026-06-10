@@ -31,6 +31,15 @@ export type EnvironmentConfig = {
   fog: {
     color: number;
     density: number;
+    /**
+     * Ground-mist band (world Y; street level is 0). A distance-independent haze
+     * at full `heightStrength` at/below `heightMin`, fading to nothing at/above
+     * `heightMax`, so the streets and lower floors recede while tower crowns stay
+     * clear. Omit any field to fall back to scene/effects/heightFog.ts defaults.
+     */
+    heightMin?: number;
+    heightMax?: number;
+    heightStrength?: number;
   };
   sun: {
     color: number;
@@ -62,6 +71,9 @@ export const ENVIRONMENT_NIGHT: EnvironmentConfig = {
     // skyline read as a vast megacity (see the cyberpunk reference).
     color: COLORS.night.fog,
     density: 0.0008,
+    heightMin: 60,
+    heightMax: 260,
+    heightStrength: 0.9,
   },
   sun: {
     color: COLORS.night.sun,
@@ -89,6 +101,9 @@ export const ENVIRONMENT_DAY: EnvironmentConfig = {
   fog: {
     color: COLORS.day.fog,
     density: 0.00035,
+    heightMin: 60,
+    heightMax: 260,
+    heightStrength: 0.9,
   },
   sun: {
     color: COLORS.day.sun,
