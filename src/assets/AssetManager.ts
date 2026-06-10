@@ -6,6 +6,7 @@ import {
   SphereGeometry,
   Matrix4,
   LinearFilter,
+  Color,
 } from "three";
 import type { Texture, Material, BufferGeometry, Group, Mesh } from "three";
 import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -32,6 +33,58 @@ import {
   createMaterialFactories,
   type MaterialFactoryMap,
 } from "./manifests/materials";
+
+// ── Window emissive tint variation ──────────────────────────────────────────
+// Real night cities are dominated by warm interior light with cool/neon as
+// accents; tinting every embedded emissive map the same white reads as a
+// monochrome synth render. Each embedded building material instead gets a
+// deterministic pick from this warm-dominant palette (keyed off the model key,
+// so the skyline doesn't reshuffle between loads). Tints are pre-lerped 25%
+// toward white so they recolor without muddying emissive maps that already
+// carry their own hue.
+const WINDOW_TINT_PALETTE: Array<{ color: number; weight: number }> = [
+  { color: 0xffc98c, weight: 0.3 }, // warm amber (sodium / interior)
+  { color: 0xfff2dc, weight: 0.25 }, // warm white
+  { color: 0xd8e8ff, weight: 0.15 }, // cool white
+  { color: 0x9fd8ff, weight: 0.15 }, // cyan-blue
+  { color: 0xb8ffd9, weight: 0.08 }, // pale green accent
+  { color: 0xffb3d9, weight: 0.07 }, // pink accent
+];
+
+// Brightness variance range applied on top of the tint. Baked into the
+// emissive COLOR (not emissiveIntensity) because updateEmissiveIntensities()
+// overwrites intensity from the preset on every preset change.
+const WINDOW_BRIGHTNESS_MIN = 0.7;
+const WINDOW_BRIGHTNESS_MAX = 1.45;
+
+/** Deterministic 0..1 hash from a string (FNV-1a folded to a float). */
+function hash01(str: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
+function pickWindowTint(seed: string): Color {
+  const roll = hash01(seed);
+  let cumulative = 0;
+  let picked = WINDOW_TINT_PALETTE[0].color;
+  for (const entry of WINDOW_TINT_PALETTE) {
+    cumulative += entry.weight;
+    if (roll <= cumulative) {
+      picked = entry.color;
+      break;
+    }
+  }
+  const brightness =
+    WINDOW_BRIGHTNESS_MIN +
+    hash01(seed + "#b") * (WINDOW_BRIGHTNESS_MAX - WINDOW_BRIGHTNESS_MIN);
+  return new Color(picked)
+    .lerp(new Color(0xffffff), 0.25)
+    .multiplyScalar(brightness);
+}
 
 export type AssetManagerConfig = {
   basePath?: string;
@@ -349,12 +402,12 @@ export class AssetManager {
         const materialKey = `__embedded_${modelKey}`;
 
         if (Array.isArray(embeddedMaterial)) {
-          for (const mat of embeddedMaterial) {
-            this.enhanceEmbeddedMaterial(mat);
-          }
+          embeddedMaterial.forEach((mat, i) => {
+            this.enhanceEmbeddedMaterial(mat, `${modelKey}:${i}`);
+          });
           this.materials.set(materialKey, embeddedMaterial);
         } else {
-          this.enhanceEmbeddedMaterial(embeddedMaterial);
+          this.enhanceEmbeddedMaterial(embeddedMaterial, `${modelKey}:0`);
           this.materials.set(materialKey, embeddedMaterial);
         }
       }
@@ -406,9 +459,9 @@ export class AssetManager {
 
     // Enhance and store all materials
     const materialKey = `__embedded_${modelKey}`;
-    for (const mat of materials) {
-      this.enhanceEmbeddedMaterial(mat);
-    }
+    materials.forEach((mat, i) => {
+      this.enhanceEmbeddedMaterial(mat, `${modelKey}:${i}`);
+    });
     this.materials.set(materialKey, materials);
 
     console.log(
@@ -422,7 +475,7 @@ export class AssetManager {
    * Enhance embedded GLB materials to work better with scene lighting
    * Adjusts PBR properties to make materials more visible in low-light scenes
    */
-  private enhanceEmbeddedMaterial(material: Material): void {
+  private enhanceEmbeddedMaterial(material: Material, tintSeed?: string): void {
     // Check if it's a PBR material (MeshStandardMaterial or MeshPhysicalMaterial)
     if ("roughness" in material && "metalness" in material) {
       const mat = material as any;
@@ -435,8 +488,13 @@ export class AssetManager {
 
       // Normalize emissive for embedded materials so preset system can control them
       if (mat.emissiveMap && mat.emissiveIntensity !== undefined) {
-        // Set consistent white emissive color - the map provides color variation
-        mat.emissive = mat.emissive || 0xffffff;
+        // Per-building window tint + brightness from the warm-dominant palette;
+        // falls back to neutral white when no seed is available.
+        if (tintSeed && mat.emissive?.isColor) {
+          mat.emissive.copy(pickWindowTint(tintSeed));
+        } else {
+          mat.emissive = mat.emissive || 0xffffff;
+        }
         // Normalize base intensity to 1.0 - the preset system will multiply this
         // by the category multiplier from BASE_EMISSIVE_INTENSITIES
         mat.emissiveIntensity = 1.0;

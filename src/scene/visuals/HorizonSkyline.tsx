@@ -29,6 +29,41 @@ const REPEAT_X = 3; // mirror-repeat count around the ring (less stretch, no sea
 
 const IMAGE_URL = "/assets/textures/environment/horizon-skyline.png";
 
+// ── Light-pollution glow ──────────────────────────────────────────────────────
+// Haze over a megacity is never darkest at the horizon — millions of lights
+// scatter up into it. The glow is baked ADDITIVELY into the panorama texture
+// itself rather than rendered as a separate layer behind the band: the band's
+// top alpha-fade makes its distant towers semi-transparent, so any bright layer
+// behind them bleeds through and they read as see-through. Composited into the
+// same texture, the glow brightens those pixels like haze in front of them
+// instead.
+function bakeHorizonGlow(
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(source, 0, 0, width, height);
+
+  // Additive vertical gradient: nothing high in the sky, violet haze building
+  // down toward a warm peak around the rooftop line, fading out again below it
+  // (the lower band is behind the real city anyway).
+  ctx.globalCompositeOperation = "lighter";
+  const g = ctx.createLinearGradient(0, 0, 0, height);
+  g.addColorStop(0.12, "rgba(0,0,0,0)");
+  g.addColorStop(0.4, "rgba(60,45,100,0.35)");
+  g.addColorStop(0.58, "rgba(130,90,140,0.55)");
+  g.addColorStop(0.72, "rgba(225,150,110,0.45)");
+  g.addColorStop(0.92, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, width, height);
+
+  return canvas;
+}
+
 const FOG_TINT = [27, 24, 56]; // procedural-fallback tint; matches 0x1b1838
 
 type Layer = {
@@ -189,8 +224,15 @@ export function HorizonSkyline({ visible }: { visible: boolean }) {
   );
 
   const mesh = useMemo(() => {
-    const map = imageTex ?? fallback;
-    if (!map) return null;
+    const source = imageTex ?? fallback;
+    if (!source) return null;
+
+    // Bake the light-pollution glow into the panorama pixels (see
+    // bakeHorizonGlow for why it can't be a separate layer).
+    const sourceImage = source.image as HTMLImageElement | HTMLCanvasElement;
+    const map = new CanvasTexture(
+      bakeHorizonGlow(sourceImage, sourceImage.width, sourceImage.height),
+    );
 
     map.colorSpace = SRGBColorSpace;
     map.wrapS = MirroredRepeatWrapping; // mirror around the ring → no seam
@@ -221,7 +263,9 @@ export function HorizonSkyline({ visible }: { visible: boolean }) {
     return () => {
       group.remove(mesh);
       mesh.geometry.dispose();
-      (mesh.material as MeshBasicMaterial).dispose();
+      const material = mesh.material as MeshBasicMaterial;
+      material.map?.dispose(); // the baked CanvasTexture, owned by the mesh
+      material.dispose();
     };
   }, [mesh]);
 
