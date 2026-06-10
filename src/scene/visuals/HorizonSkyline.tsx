@@ -48,15 +48,17 @@ function bakeHorizonGlow(
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(source, 0, 0, width, height);
 
-  // Additive vertical gradient: nothing high in the sky, violet haze building
-  // down toward a warm peak around the rooftop line, fading out again below it
-  // (the lower band is behind the real city anyway).
+  // Additive vertical gradient: a long, gentle decay from the very top of the
+  // band down to a modest warm peak around the rooftop line, fading out again
+  // below it (the lower band is behind the real city anyway). The slow build
+  // from zero matters: a fast ramp reads as a hard band edge against the dark
+  // sky.
   ctx.globalCompositeOperation = "lighter";
   const g = ctx.createLinearGradient(0, 0, 0, height);
-  g.addColorStop(0.12, "rgba(0,0,0,0)");
-  g.addColorStop(0.4, "rgba(60,45,100,0.35)");
-  g.addColorStop(0.58, "rgba(130,90,140,0.55)");
-  g.addColorStop(0.72, "rgba(225,150,110,0.45)");
+  g.addColorStop(0.0, "rgba(0,0,0,0)");
+  g.addColorStop(0.3, "rgba(35,28,65,0.12)");
+  g.addColorStop(0.52, "rgba(85,62,115,0.24)");
+  g.addColorStop(0.7, "rgba(185,125,110,0.28)");
   g.addColorStop(0.92, "rgba(0,0,0,0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, width, height);
@@ -175,9 +177,13 @@ function makeFadeAlphaMap(): CanvasTexture {
   c.height = 256;
   const ctx = c.getContext("2d")!;
   const g = ctx.createLinearGradient(0, 0, 0, 256);
+  // Long eased ramp (slow build from transparent, steeper near opaque): a short
+  // linear fade reads as an abrupt border where the band meets the dark sky.
   g.addColorStop(0.0, "#000"); // top (sky) → transparent
-  g.addColorStop(0.26, "#000");
-  g.addColorStop(0.44, "#fff"); // fade in over the rooftops
+  g.addColorStop(0.05, "#000");
+  g.addColorStop(0.3, "#222");
+  g.addColorStop(0.45, "#666");
+  g.addColorStop(0.58, "#fff"); // fully opaque over the rooftops
   g.addColorStop(1.0, "#fff");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 4, 256);

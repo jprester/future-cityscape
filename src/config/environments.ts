@@ -28,6 +28,12 @@ export type EnvironmentConfig = {
    * 0 reproduces the original look; raise it to let the env map tint them.
    */
   environmentIntensity: number;
+  /**
+   * Multiplies the sky texture via `Scene.backgroundIntensity`. The night sky
+   * image carries its own baked light-pollution gradient, so this is a fine
+   * brightness trim, not the main lift.
+   */
+  backgroundIntensity: number;
   fog: {
     color: number;
     density: number;
@@ -55,6 +61,7 @@ export const ENVIRONMENT_NIGHT: EnvironmentConfig = {
   streetLights: true,
   shadows: false,
   environmentIntensity: 0.3,
+  backgroundIntensity: 0.4,
   fog: {
     // Thinner than before (0.0011) so the large city recedes into a hazy depth
     // — distant towers stay faintly visible as silhouettes instead of being
@@ -86,6 +93,7 @@ export const ENVIRONMENT_DAY: EnvironmentConfig = {
   streetLights: false,
   shadows: true,
   environmentIntensity: 0,
+  backgroundIntensity: 1,
   fog: {
     color: COLORS.day.fog,
     density: 0.00035,

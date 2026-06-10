@@ -128,6 +128,7 @@ export function GameBridge() {
     const skyTexture = game.assets.getTexture(environment.sky);
     if (skyTexture) {
       scene.background = skyTexture;
+      scene.backgroundIntensity = environment.backgroundIntensity;
     }
 
     const envMap = game.assets.getTexture(environment.environmentMap);

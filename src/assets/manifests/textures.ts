@@ -15,8 +15,14 @@ import { SMALL_ADS_META, smallAdTextureKey } from "../../config/smallAds";
 export function createTextureManifest(anisotropy: number): TextureManifest {
   const manifest: TextureManifest = {
     // Sky textures
+    // Gemini light-pollution night sky (warm horizon band + soft cloud deck),
+    // derived from Gemini_Generated_Image_asb6fp….png in the same folder:
+    // watermark sparkle patched out, resized to a clean 2:1, light seam feather.
+    // It arrived almost perfectly seamless (edge diff ~2/255) with a uniform
+    // zenith, so no ramp/zenith fix was needed. The earlier Midjourney sky
+    // (sky_night.png) is kept on disk, unreferenced.
     sky_night: {
-      path: "textures/environment/sky_night.jpg",
+      path: "textures/environment/sky_night_gemini.png",
       options: {
         colorSpace: SRGBColorSpace,
         mapping: EquirectangularReflectionMapping,
