@@ -1,18 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { useEffect, useMemo } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Html } from "@react-three/drei";
 import { NoToneMapping, SRGBColorSpace } from "three";
 import type { BufferGeometry, Material } from "three";
 import { Game } from "../../classes/Game.js";
 import { useGameStore } from "../../context/GameContext";
+import { getEmbeddedMaterialKeys } from "../../config/buildingRegistry";
 import {
-  getAllModelKeys,
-  getEmbeddedMaterialKeys,
-} from "../../config/buildingRegistry";
+  getProceduralAdMaterial,
+  tickNeonFlicker,
+} from "../wallAds/proceduralNeon";
+import {
+  getViewerItems,
+  type ViewerCategory,
+  type ViewerItem,
+} from "./assetViewerCatalog";
 import { COLORS } from "../../constants/colors";
 
-// All building model keys and embedded material set from registry
-const ALL_KEYS = getAllModelKeys();
 const EMBEDDED = getEmbeddedMaterialKeys();
 
 // Shared texture material keys (for OBJ models)
@@ -29,36 +33,41 @@ const SHARED_MATERIALS = [
   "building_10",
 ];
 
-type ResolvedModel = {
-  key: string;
-  geometry: BufferGeometry;
+// Sign planes are normalized so their longest edge spans this many units.
+const SIGN_SIZE = 60;
+
+type ResolvedItem = {
+  item: ViewerItem;
+  /** Set for kind "model" items. */
+  geometry?: BufferGeometry;
   material: Material | Material[];
 };
 
 type AssetViewerContentProps = {
+  category: ViewerCategory;
   viewMode: "single" | "gallery";
   currentIndex: number;
 };
 
-/** Resolve geometry+material for a building key */
+/** Resolve geometry+material for a building model key */
 function resolveModel(
   key: string,
   getModel: (k: string) => BufferGeometry | undefined,
   getMaterial: (k: string) => Material | Material[] | undefined,
-): ResolvedModel | null {
+): { geometry: BufferGeometry; material: Material | Material[] } | null {
   const geometry = getModel(key);
   if (!geometry) return null;
 
   if (EMBEDDED.has(key)) {
     const material = getMaterial(`__embedded_${key}`);
     if (!material) return null;
-    return { key, geometry, material };
+    return { geometry, material };
   }
 
   // OBJ model — pick the first available shared material
   for (const matKey of SHARED_MATERIALS) {
     const material = getMaterial(matKey);
-    if (material) return { key, geometry, material };
+    if (material) return { geometry, material };
   }
   return null;
 }
@@ -100,29 +109,48 @@ function AssetLoader() {
   return null;
 }
 
-/** Single building view */
-function SingleView({ model }: { model: ResolvedModel }) {
+/** Drives the procedural-neon flicker materials (same call the city makes). */
+function NeonFlickerTick() {
+  useFrame(({ clock }) => tickNeonFlicker(clock.elapsedTime));
+  return null;
+}
+
+/** Fit a sign plane inside SIGN_SIZE keeping its aspect ratio. */
+function planeSize(aspect: number): [number, number] {
+  return aspect >= 1
+    ? [SIGN_SIZE, SIGN_SIZE / aspect]
+    : [SIGN_SIZE * aspect, SIGN_SIZE];
+}
+
+function ItemMesh({ resolved }: { resolved: ResolvedItem }) {
+  if (resolved.item.kind === "model") {
+    return <mesh geometry={resolved.geometry} material={resolved.material} />;
+  }
+  const [w, h] = planeSize(resolved.item.aspect);
   return (
-    <mesh geometry={model.geometry} material={model.material} position={[0, 0, 0]} />
+    <mesh material={resolved.material} position={[0, h / 2 + 4, 0]}>
+      <planeGeometry args={[w, h]} />
+    </mesh>
   );
 }
 
-/** Gallery view — grid of all buildings */
-function GalleryView({ models }: { models: ResolvedModel[] }) {
-  const COLS = 4;
-  const SPACING = 200;
+/** Gallery view — grid of all items in the category */
+function GalleryView({ items }: { items: ResolvedItem[] }) {
+  const isModels = items[0]?.item.kind === "model";
+  const COLS = isModels ? 4 : 6;
+  const SPACING = isModels ? 200 : 90;
 
   return (
     <>
-      {models.map((model, i) => {
+      {items.map((resolved, i) => {
         const col = i % COLS;
         const row = Math.floor(i / COLS);
         const x = (col - (COLS - 1) / 2) * SPACING;
         const z = row * SPACING;
 
         return (
-          <group key={model.key} position={[x, 0, z]}>
-            <mesh geometry={model.geometry} material={model.material} />
+          <group key={resolved.item.key} position={[x, 0, z]}>
+            <ItemMesh resolved={resolved} />
             <Html position={[0, -5, 0]} center style={{ pointerEvents: "none" }}>
               <div
                 style={{
@@ -133,7 +161,7 @@ function GalleryView({ models }: { models: ResolvedModel[] }) {
                   textShadow: "0 0 8px #00fff7",
                 }}
               >
-                {model.key}
+                {resolved.item.key}
               </div>
             </Html>
           </group>
@@ -143,42 +171,59 @@ function GalleryView({ models }: { models: ResolvedModel[] }) {
   );
 }
 
-function SceneContent({ viewMode, currentIndex }: AssetViewerContentProps) {
+function SceneContent({
+  category,
+  viewMode,
+  currentIndex,
+}: AssetViewerContentProps) {
   const { gameRef, launchReady } = useGameStore();
 
-  // Resolve all models once assets are loaded
-  const resolvedModels = useMemo(() => {
+  // Resolve every catalog item to a renderable geometry/material pair.
+  const resolvedItems = useMemo(() => {
     if (!launchReady || !gameRef.current?.assets) return [];
 
     const assets = gameRef.current.assets;
-    const models: ResolvedModel[] = [];
+    const resolved: ResolvedItem[] = [];
 
-    for (const key of ALL_KEYS) {
-      const resolved = resolveModel(
-        key,
-        (k) => assets.getModel(k),
-        (k) => assets.getMaterial(k),
-      );
-      if (resolved) models.push(resolved);
+    for (const item of getViewerItems(category)) {
+      if (item.kind === "model") {
+        const model = resolveModel(
+          item.key,
+          (k) => assets.getModel(k),
+          (k) => assets.getMaterial(k),
+        );
+        if (model) resolved.push({ item, ...model });
+      } else {
+        // Procedural neon materials live outside AssetManager.
+        const material =
+          getProceduralAdMaterial(item.key) ?? assets.getMaterial(item.key);
+        if (material) resolved.push({ item, material });
+      }
     }
 
-    return models;
-  }, [launchReady, gameRef]);
+    return resolved;
+  }, [category, launchReady, gameRef]);
 
-  if (!launchReady || resolvedModels.length === 0) {
+  if (!launchReady || resolvedItems.length === 0) {
     return null;
   }
 
-  const currentModel = resolvedModels[currentIndex % resolvedModels.length];
+  const current = resolvedItems[currentIndex % resolvedItems.length];
 
-  return viewMode === "single" ? (
-    <SingleView model={currentModel} />
-  ) : (
-    <GalleryView models={resolvedModels} />
+  return (
+    <>
+      {category === "neon" && <NeonFlickerTick />}
+      {viewMode === "single" ? (
+        <ItemMesh resolved={current} />
+      ) : (
+        <GalleryView items={resolvedItems} />
+      )}
+    </>
   );
 }
 
 export default function AssetViewerScene({
+  category,
   viewMode,
   currentIndex,
 }: AssetViewerContentProps) {
@@ -215,7 +260,11 @@ export default function AssetViewerScene({
         maxDistance={1500}
       />
 
-      <SceneContent viewMode={viewMode} currentIndex={currentIndex} />
+      <SceneContent
+        category={category}
+        viewMode={viewMode}
+        currentIndex={currentIndex}
+      />
     </Canvas>
   );
 }

@@ -1,19 +1,14 @@
 import { useEffect } from "react";
 import { useGameStore } from "../context/GameContext";
-import { getAllModelKeys, getEmbeddedMaterialKeys } from "../config/buildingRegistry";
-
-const ALL_KEYS = getAllModelKeys();
-const EMBEDDED = getEmbeddedMaterialKeys();
-
-function getSeriesLabel(key: string): string {
-  if (key.startsWith("residential_")) return "Residential";
-  if (key.startsWith("commercial_")) return "Commercial";
-  if (key.startsWith("skyscraper_")) return "Skyscraper";
-  if (key.startsWith("tower_")) return "Tower";
-  return "Unknown";
-}
+import {
+  getViewerItems,
+  VIEWER_CATEGORIES,
+  type ViewerCategory,
+} from "../scene/systems/assetViewerCatalog";
 
 type AssetViewerUIProps = {
+  category: ViewerCategory;
+  setCategory: (category: ViewerCategory) => void;
   viewMode: "single" | "gallery";
   setViewMode: (mode: "single" | "gallery") => void;
   currentIndex: number;
@@ -21,25 +16,32 @@ type AssetViewerUIProps = {
 };
 
 export default function AssetViewerUI({
+  category,
+  setCategory,
   viewMode,
   setViewMode,
   currentIndex,
   setCurrentIndex,
 }: AssetViewerUIProps) {
   const { launchReady } = useGameStore();
-  const total = ALL_KEYS.length;
+  const items = getViewerItems(category);
+  const total = items.length;
   const safeIndex = currentIndex % total;
-  const currentKey = ALL_KEYS[safeIndex];
-  const format = EMBEDDED.has(currentKey) ? "GLB" : "OBJ";
-  const series = getSeriesLabel(currentKey);
+  const currentItem = items[safeIndex];
 
-  // Arrow key navigation
+  // Keyboard navigation: ←/→ cycle items, ↑/↓ cycle categories, Tab view
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight") {
         setCurrentIndex((prev) => (prev + 1) % total);
       } else if (e.key === "ArrowLeft") {
         setCurrentIndex((prev) => (prev - 1 + total) % total);
+      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const dir = e.key === "ArrowDown" ? 1 : -1;
+        const i = VIEWER_CATEGORIES.findIndex((c) => c.id === category);
+        const n = VIEWER_CATEGORIES.length;
+        setCategory(VIEWER_CATEGORIES[(i + dir + n) % n].id);
       } else if (e.key === "Tab") {
         e.preventDefault();
         setViewMode(viewMode === "single" ? "gallery" : "single");
@@ -48,7 +50,7 @@ export default function AssetViewerUI({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [total, viewMode, setViewMode, setCurrentIndex]);
+  }, [total, viewMode, setViewMode, setCurrentIndex, category, setCategory]);
 
   return (
     <div style={styles.container}>
@@ -56,18 +58,33 @@ export default function AssetViewerUI({
       <div style={styles.header}>
         <span style={styles.title}>ASSET VIEWER</span>
         <span style={styles.hint}>
-          {viewMode === "single" ? "← → cycle" : ""} | Tab toggle view
+          {viewMode === "single" ? "← → cycle | " : ""}↑ ↓ category | Tab
+          toggle view
         </span>
       </div>
 
       {/* Loading state */}
-      {!launchReady && (
-        <div style={styles.loading}>Loading assets...</div>
-      )}
+      {!launchReady && <div style={styles.loading}>Loading assets...</div>}
 
       {/* Controls */}
       {launchReady && (
         <div style={styles.controls}>
+          {/* Category tabs */}
+          <div style={styles.row}>
+            {VIEWER_CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                style={{
+                  ...styles.button,
+                  ...(category === c.id ? styles.buttonActive : {}),
+                }}
+                onClick={() => setCategory(c.id)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
           {/* View mode toggle */}
           <div style={styles.row}>
             <button
@@ -91,7 +108,7 @@ export default function AssetViewerUI({
           </div>
 
           {/* Single view info */}
-          {viewMode === "single" && (
+          {viewMode === "single" && currentItem && (
             <div style={styles.info}>
               <div style={styles.row}>
                 <button
@@ -102,25 +119,23 @@ export default function AssetViewerUI({
                 >
                   ◀
                 </button>
-                <span style={styles.modelKey}>{currentKey}</span>
+                <span style={styles.modelKey}>{currentItem.key}</span>
                 <button
                   style={styles.navButton}
-                  onClick={() =>
-                    setCurrentIndex((prev) => (prev + 1) % total)
-                  }
+                  onClick={() => setCurrentIndex((prev) => (prev + 1) % total)}
                 >
                   ▶
                 </button>
               </div>
               <div style={styles.meta}>
-                {series} &middot; {format} &middot; {safeIndex + 1}/{total}
+                {currentItem.detail} &middot; {safeIndex + 1}/{total}
               </div>
             </div>
           )}
 
           {/* Gallery info */}
           {viewMode === "gallery" && (
-            <div style={styles.meta}>{total} buildings</div>
+            <div style={styles.meta}>{total} items</div>
           )}
         </div>
       )}
