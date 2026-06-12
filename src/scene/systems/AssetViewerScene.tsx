@@ -47,6 +47,7 @@ type AssetViewerContentProps = {
   category: ViewerCategory;
   viewMode: "single" | "gallery";
   currentIndex: number;
+  showLabels: boolean;
 };
 
 /** Resolve geometry+material for a building model key */
@@ -135,7 +136,13 @@ function ItemMesh({ resolved }: { resolved: ResolvedItem }) {
 }
 
 /** Gallery view — grid of all items in the category */
-function GalleryView({ items }: { items: ResolvedItem[] }) {
+function GalleryView({
+  items,
+  showLabels,
+}: {
+  items: ResolvedItem[];
+  showLabels: boolean;
+}) {
   const isModels = items[0]?.item.kind === "model";
   const COLS = isModels ? 4 : 6;
   const SPACING = isModels ? 200 : 90;
@@ -151,19 +158,25 @@ function GalleryView({ items }: { items: ResolvedItem[] }) {
         return (
           <group key={resolved.item.key} position={[x, 0, z]}>
             <ItemMesh resolved={resolved} />
-            <Html position={[0, -5, 0]} center style={{ pointerEvents: "none" }}>
-              <div
-                style={{
-                  color: "#00fff7",
-                  fontFamily: "monospace",
-                  fontSize: "12px",
-                  whiteSpace: "nowrap",
-                  textShadow: "0 0 8px #00fff7",
-                }}
+            {showLabels && (
+              <Html
+                position={[0, -5, 0]}
+                center
+                style={{ pointerEvents: "none" }}
               >
-                {resolved.item.key}
-              </div>
-            </Html>
+                <div
+                  style={{
+                    color: "#00fff7",
+                    fontFamily: "monospace",
+                    fontSize: "12px",
+                    whiteSpace: "nowrap",
+                    textShadow: "0 0 8px #00fff7",
+                  }}
+                >
+                  {resolved.item.key}
+                </div>
+              </Html>
+            )}
           </group>
         );
       })}
@@ -175,6 +188,7 @@ function SceneContent({
   category,
   viewMode,
   currentIndex,
+  showLabels,
 }: AssetViewerContentProps) {
   const { gameRef, launchReady } = useGameStore();
 
@@ -216,7 +230,7 @@ function SceneContent({
       {viewMode === "single" ? (
         <ItemMesh resolved={current} />
       ) : (
-        <GalleryView items={resolvedItems} />
+        <GalleryView items={resolvedItems} showLabels={showLabels} />
       )}
     </>
   );
@@ -226,6 +240,7 @@ export default function AssetViewerScene({
   category,
   viewMode,
   currentIndex,
+  showLabels,
 }: AssetViewerContentProps) {
   return (
     <Canvas
@@ -264,6 +279,7 @@ export default function AssetViewerScene({
         category={category}
         viewMode={viewMode}
         currentIndex={currentIndex}
+        showLabels={showLabels}
       />
     </Canvas>
   );

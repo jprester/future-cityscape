@@ -13,6 +13,8 @@ type AssetViewerUIProps = {
   setViewMode: (mode: "single" | "gallery") => void;
   currentIndex: number;
   setCurrentIndex: (index: number | ((prev: number) => number)) => void;
+  showLabels: boolean;
+  setShowLabels: (show: boolean) => void;
 };
 
 export default function AssetViewerUI({
@@ -22,6 +24,8 @@ export default function AssetViewerUI({
   setViewMode,
   currentIndex,
   setCurrentIndex,
+  showLabels,
+  setShowLabels,
 }: AssetViewerUIProps) {
   const { launchReady } = useGameStore();
   const items = getViewerItems(category);
@@ -135,7 +139,17 @@ export default function AssetViewerUI({
 
           {/* Gallery info */}
           {viewMode === "gallery" && (
-            <div style={styles.meta}>{total} items</div>
+            <div style={styles.row}>
+              <span style={styles.meta}>{total} items</span>
+              <label style={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={showLabels}
+                  onChange={(e) => setShowLabels(e.target.checked)}
+                />
+                names
+              </label>
+            </div>
           )}
         </div>
       )}
@@ -226,5 +240,13 @@ const styles: Record<string, React.CSSProperties> = {
   meta: {
     fontSize: 12,
     opacity: 0.7,
+  },
+  checkboxLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    fontSize: 12,
+    opacity: 0.8,
+    cursor: "pointer",
   },
 };

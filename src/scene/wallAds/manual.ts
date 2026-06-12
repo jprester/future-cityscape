@@ -23,8 +23,9 @@ import type { WallAdManualEntry } from "./types";
 //     a height of ~20 reads well at a roofline)
 //   • "pneon_logo_w_NN" — glyph + name lockup, 2:1
 //   • "pneon_logo_v_NN" — letters stacked vertically, 1:4 (corner edges)
-// The generated signs ("pneon_v_NN"/"pneon_h_NN") work here too. `style` is
-// ignored for pneon entries. Example — wordmark at a tower's roofline:
+// The generated signs ("pneon_v_NN"/"pneon_h_NN") and pictorial blade signs
+// ("pneon_p_NN" — ramen/martini/torii/… icons, 2:3) work here too. `style`
+// is ignored for pneon entries. Example — wordmark at a tower's roofline:
 //   { gi: 9, gj: 7, pneonKey: "pneon_logo_t_02", face: 2, height: 22, y: 320 },
 
 export const WALL_ADS_MANUAL: WallAdManualEntry[] = [

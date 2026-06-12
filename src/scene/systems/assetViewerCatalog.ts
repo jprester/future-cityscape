@@ -8,6 +8,7 @@ import {
   PROC_NEON_VERTICAL,
   PROC_NEON_HORIZONTAL,
   PROC_NEON_FLICKER,
+  PROC_NEON_PICTORIAL,
   PROC_LOGO_FAMILIES,
 } from "../wallAds/proceduralNeon";
 
@@ -98,6 +99,13 @@ function buildItems(category: ViewerCategory): ViewerItem[] {
         items.push({
           key: m.key,
           detail: "generated · flicker (animated)",
+          kind: "plane",
+          aspect: m.aspect,
+        });
+      for (const m of PROC_NEON_PICTORIAL)
+        items.push({
+          key: m.key,
+          detail: "generated · pictorial sign",
           kind: "plane",
           aspect: m.aspect,
         });

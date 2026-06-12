@@ -13,6 +13,7 @@ function AssetViewerApp() {
   const [category, setCategoryRaw] = useState<ViewerCategory>('buildings');
   const [viewMode, setViewMode] = useState<'single' | 'gallery'>('single');
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showLabels, setShowLabels] = useState(true);
 
   // Each category has its own item count, so restart from the first item.
   const setCategory = (c: ViewerCategory) => {
@@ -26,6 +27,7 @@ function AssetViewerApp() {
         category={category}
         viewMode={viewMode}
         currentIndex={currentIndex}
+        showLabels={showLabels}
       />
       <AssetViewerUI
         category={category}
@@ -34,6 +36,8 @@ function AssetViewerApp() {
         setViewMode={setViewMode}
         currentIndex={currentIndex}
         setCurrentIndex={setCurrentIndex}
+        showLabels={showLabels}
+        setShowLabels={setShowLabels}
       />
     </>
   );

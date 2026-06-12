@@ -13,6 +13,9 @@ import type { Material } from "three";
 //
 //   • vertical signs (1:4)   — stacked katakana, like the small-ads bucket
 //   • horizontal signs (4:1)  — katakana or latin brand strips
+//   • pictorial signs (2:3)   — blade-sign style: a hand-traced neon icon
+//     (ramen bowl, martini glass, torii gate, koi, cyber-eye, lucky cat,
+//     sake set, heart, dragon, rocket, dice, umbrella) over a themed caption
 //   • logo FAMILIES           — per generated company, THREE matching
 //     textures sharing one name + palette: wide glyph+name (2:1), tracked
 //     text wordmark (4:1, the SONY/TRUIST look), vertical stacked-letter
@@ -45,6 +48,7 @@ const VERTICAL_COUNT = 14;
 const HORIZONTAL_COUNT = 10;
 const LOGO_FAMILY_COUNT = 12;
 const FLICKER_COUNT = 6;
+const PICTORIAL_COUNT = 14;
 const EMISSIVE_INTENSITY = 1.9;
 
 const makeMetas = (prefix: string, count: number, aspect: number) =>
@@ -67,6 +71,11 @@ export const PROC_NEON_FLICKER: ProceduralAdMeta[] = makeMetas(
   "f",
   FLICKER_COUNT,
   1 / 4,
+);
+export const PROC_NEON_PICTORIAL: ProceduralAdMeta[] = makeMetas(
+  "p",
+  PICTORIAL_COUNT,
+  2 / 3,
 );
 
 /** One generated company: three texture variants sharing name + colors. */
@@ -237,6 +246,49 @@ function glowStroke(
   ctx.shadowBlur = 0;
 }
 
+/** Small filled glow circle — eyes, olives, pips, indicator dots. */
+function glowDot(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  color: string,
+): void {
+  const dot = () => {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.shadowColor = color;
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.85;
+  ctx.shadowBlur = r * 3;
+  dot();
+  ctx.shadowBlur = r * 1.2;
+  dot();
+  ctx.fillStyle = toCore(color, 0.7);
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = r * 0.5;
+  dot();
+  ctx.shadowBlur = 0;
+}
+
+/** moveTo the start of an arc so a multi-subpath trace doesn't connect. */
+function arcFrom(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  a0: number,
+  a1: number,
+  ccw = false,
+): void {
+  ctx.moveTo(x + Math.cos(a0) * r, y + Math.sin(a0) * r);
+  ctx.arc(x, y, r, a0, a1, ccw);
+}
+
 function roundRectPath(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -329,6 +381,484 @@ function buildHorizontal(rand: Rand): HTMLCanvasElement {
     ctx.font = `900 ${px}px ${FONT_STACK}`;
   }
   glowText(ctx, text, W / 2, H / 2, px, color);
+  return canvas;
+}
+
+// ── Pictorial signs ──────────────────────────────────────────────────────────
+//
+// Hand-traced neon icons, each drawn with the same layered-tube strokes as
+// the text signs. A painter gets a center, a scale unit `s` (≈ half the icon
+// extent), a primary tube color `a` and an accent color `b`.
+
+type IconPainter = (
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  s: number,
+  a: string,
+  b: string,
+  rand: Rand,
+) => void;
+
+type PictorialIcon = {
+  paint: IconPainter;
+  /** Themed captions; one is picked at random for the sign's text line. */
+  captions: readonly string[];
+};
+
+const PICTORIAL_ICONS: readonly PictorialIcon[] = [
+  {
+    // Ramen bowl: bowl + rim + chopsticks, steam in the accent color.
+    captions: ["ラーメン", "NOODLE", "麺屋"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      glowStroke(
+        ctx,
+        () => {
+          arcFrom(ctx, cx, cy, s * 0.78, 0, Math.PI);
+          ctx.moveTo(cx - s * 0.78, cy);
+          ctx.lineTo(cx + s * 0.78, cy);
+          ctx.moveTo(cx - s * 0.28, cy + s * 0.88);
+          ctx.lineTo(cx + s * 0.28, cy + s * 0.88);
+          ctx.moveTo(cx - s * 0.15, cy - s * 0.05);
+          ctx.lineTo(cx + s * 0.5, cy - s * 0.9);
+          ctx.moveTo(cx + s * 0.02, cy - s * 0.02);
+          ctx.lineTo(cx + s * 0.65, cy - s * 0.78);
+        },
+        a,
+        6,
+        18,
+      );
+      glowStroke(
+        ctx,
+        () => {
+          for (const dx of [-0.45, -0.15]) {
+            ctx.moveTo(cx + s * dx, cy - s * 0.18);
+            ctx.bezierCurveTo(
+              cx + s * (dx - 0.12),
+              cy - s * 0.4,
+              cx + s * (dx + 0.12),
+              cy - s * 0.55,
+              cx + s * dx,
+              cy - s * 0.8,
+            );
+          }
+        },
+        b,
+        4,
+        14,
+      );
+    },
+  },
+  {
+    // Martini glass with olive on a pick.
+    captions: ["BAR", "CLUB NOIR", "サケBAR"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx - s * 0.7, cy - s * 0.75);
+          ctx.lineTo(cx, cy);
+          ctx.lineTo(cx + s * 0.7, cy - s * 0.75);
+          ctx.moveTo(cx - s * 0.7, cy - s * 0.75);
+          ctx.lineTo(cx + s * 0.7, cy - s * 0.75);
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx, cy + s * 0.55);
+          ctx.moveTo(cx - s * 0.32, cy + s * 0.55);
+          ctx.lineTo(cx + s * 0.32, cy + s * 0.55);
+        },
+        a,
+        6,
+        18,
+      );
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx + s * 0.12, cy - s * 0.55);
+          ctx.lineTo(cx + s * 0.4, cy - s * 0.92);
+        },
+        b,
+        4,
+        12,
+      );
+      glowDot(ctx, cx + s * 0.12, cy - s * 0.48, s * 0.1, b);
+    },
+  },
+  {
+    // Torii gate.
+    captions: ["神社", "KYOTO", "ジンジャ"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx - s * 0.9, cy - s * 0.5);
+          ctx.quadraticCurveTo(cx, cy - s * 0.68, cx + s * 0.9, cy - s * 0.5);
+          ctx.moveTo(cx - s * 0.62, cy - s * 0.22);
+          ctx.lineTo(cx + s * 0.62, cy - s * 0.22);
+          ctx.moveTo(cx - s * 0.5, cy - s * 0.54);
+          ctx.lineTo(cx - s * 0.58, cy + s * 0.8);
+          ctx.moveTo(cx + s * 0.5, cy - s * 0.54);
+          ctx.lineTo(cx + s * 0.58, cy + s * 0.8);
+          ctx.moveTo(cx, cy - s * 0.6);
+          ctx.lineTo(cx, cy - s * 0.22);
+        },
+        a,
+        6,
+        18,
+      );
+      glowDot(ctx, cx, cy + s * 0.25, s * 0.07, b);
+    },
+  },
+  {
+    // Koi fish, nose left, fan tail right; accent eye and scales.
+    captions: ["寿司", "SUSHI", "KOI"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx - s * 0.8, cy);
+          ctx.quadraticCurveTo(cx - s * 0.2, cy - s * 0.55, cx + s * 0.35, cy - s * 0.12);
+          ctx.lineTo(cx + s * 0.8, cy - s * 0.38);
+          ctx.quadraticCurveTo(cx + s * 0.62, cy, cx + s * 0.8, cy + s * 0.38);
+          ctx.lineTo(cx + s * 0.35, cy + s * 0.12);
+          ctx.quadraticCurveTo(cx - s * 0.2, cy + s * 0.55, cx - s * 0.8, cy);
+          ctx.moveTo(cx - s * 0.45, cy - s * 0.22);
+          ctx.quadraticCurveTo(cx - s * 0.32, cy, cx - s * 0.45, cy + s * 0.22);
+        },
+        a,
+        6,
+        18,
+      );
+      glowStroke(
+        ctx,
+        () => {
+          arcFrom(ctx, cx - s * 0.05, cy, s * 0.17, -Math.PI * 0.4, Math.PI * 0.4);
+          arcFrom(ctx, cx + s * 0.14, cy, s * 0.14, -Math.PI * 0.35, Math.PI * 0.35);
+        },
+        b,
+        3.5,
+        10,
+      );
+      glowDot(ctx, cx - s * 0.58, cy - s * 0.07, s * 0.05, b);
+    },
+  },
+  {
+    // Cyber-eye: almond + iris, circuit trace running off the corner.
+    captions: ["OPTICS", "VISION+", "アイ・ラボ"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx - s * 0.85, cy);
+          ctx.quadraticCurveTo(cx, cy - s * 0.62, cx + s * 0.85, cy);
+          ctx.quadraticCurveTo(cx, cy + s * 0.62, cx - s * 0.85, cy);
+          arcFrom(ctx, cx, cy, s * 0.3, 0, Math.PI * 2);
+        },
+        a,
+        6,
+        18,
+      );
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx + s * 0.85, cy);
+          ctx.lineTo(cx + s * 0.95, cy + s * 0.2);
+          ctx.lineTo(cx + s * 0.95, cy + s * 0.5);
+        },
+        b,
+        3.5,
+        12,
+      );
+      glowDot(ctx, cx, cy, s * 0.1, b);
+      glowDot(ctx, cx + s * 0.95, cy + s * 0.58, s * 0.05, b);
+    },
+  },
+  {
+    // Lucky cat face: head + ears, accent whiskers and happy eyes.
+    captions: ["招福", "LUCKY CAT", "パチンコ"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      glowStroke(
+        ctx,
+        () => {
+          arcFrom(ctx, cx, cy + s * 0.05, s * 0.55, 0, Math.PI * 2);
+          ctx.moveTo(cx - s * 0.48, cy - s * 0.2);
+          ctx.lineTo(cx - s * 0.62, cy - s * 0.78);
+          ctx.lineTo(cx - s * 0.13, cy - s * 0.48);
+          ctx.moveTo(cx + s * 0.48, cy - s * 0.2);
+          ctx.lineTo(cx + s * 0.62, cy - s * 0.78);
+          ctx.lineTo(cx + s * 0.13, cy - s * 0.48);
+        },
+        a,
+        6,
+        18,
+      );
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx - s * 0.6, cy + s * 0.02);
+          ctx.lineTo(cx - s * 0.95, cy - s * 0.06);
+          ctx.moveTo(cx - s * 0.6, cy + s * 0.16);
+          ctx.lineTo(cx - s * 0.95, cy + s * 0.2);
+          ctx.moveTo(cx + s * 0.6, cy + s * 0.02);
+          ctx.lineTo(cx + s * 0.95, cy - s * 0.06);
+          ctx.moveTo(cx + s * 0.6, cy + s * 0.16);
+          ctx.lineTo(cx + s * 0.95, cy + s * 0.2);
+          arcFrom(ctx, cx - s * 0.22, cy - s * 0.02, s * 0.1, Math.PI * 1.15, Math.PI * 1.85);
+          arcFrom(ctx, cx + s * 0.22, cy - s * 0.02, s * 0.1, Math.PI * 1.15, Math.PI * 1.85);
+        },
+        b,
+        3.5,
+        10,
+      );
+      glowDot(ctx, cx, cy + s * 0.18, s * 0.05, b);
+    },
+  },
+  {
+    // Sake set: tokkuri bottle + cup, kanji accent.
+    captions: ["居酒屋", "SAKE", "のみや"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      const bx = cx - s * 0.3;
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(bx - s * 0.14, cy - s * 0.68);
+          ctx.lineTo(bx - s * 0.09, cy - s * 0.4);
+          ctx.quadraticCurveTo(bx - s * 0.45, cy - s * 0.1, bx - s * 0.38, cy + s * 0.35);
+          ctx.quadraticCurveTo(bx - s * 0.34, cy + s * 0.62, bx, cy + s * 0.62);
+          ctx.quadraticCurveTo(bx + s * 0.34, cy + s * 0.62, bx + s * 0.38, cy + s * 0.35);
+          ctx.quadraticCurveTo(bx + s * 0.45, cy - s * 0.1, bx + s * 0.09, cy - s * 0.4);
+          ctx.lineTo(bx + s * 0.14, cy - s * 0.68);
+          ctx.moveTo(bx - s * 0.14, cy - s * 0.68);
+          ctx.lineTo(bx + s * 0.14, cy - s * 0.68);
+          const ux = cx + s * 0.48;
+          const uy = cy + s * 0.32;
+          ctx.moveTo(ux - s * 0.24, uy);
+          ctx.quadraticCurveTo(ux - s * 0.2, uy + s * 0.28, ux, uy + s * 0.28);
+          ctx.quadraticCurveTo(ux + s * 0.2, uy + s * 0.28, ux + s * 0.24, uy);
+          ctx.moveTo(ux - s * 0.24, uy);
+          ctx.lineTo(ux + s * 0.24, uy);
+        },
+        a,
+        6,
+        18,
+      );
+      glowText(ctx, "酒", cx + s * 0.45, cy - s * 0.45, s * 0.5, b);
+    },
+  },
+  {
+    // Heart pierced by an arrow.
+    captions: ["HOTEL", "ホテル", "LOVE"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx, cy + s * 0.6);
+          ctx.bezierCurveTo(cx - s, cy - s * 0.1, cx - s * 0.55, cy - s * 0.75, cx, cy - s * 0.25);
+          ctx.bezierCurveTo(cx + s * 0.55, cy - s * 0.75, cx + s, cy - s * 0.1, cx, cy + s * 0.6);
+        },
+        a,
+        6,
+        18,
+      );
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx - s * 0.85, cy + s * 0.5);
+          ctx.lineTo(cx + s * 0.85, cy - s * 0.55);
+          ctx.moveTo(cx + s * 0.85, cy - s * 0.55);
+          ctx.lineTo(cx + s * 0.6, cy - s * 0.52);
+          ctx.moveTo(cx + s * 0.85, cy - s * 0.55);
+          ctx.lineTo(cx + s * 0.78, cy - s * 0.32);
+          ctx.moveTo(cx - s * 0.85, cy + s * 0.5);
+          ctx.lineTo(cx - s * 0.68, cy + s * 0.52);
+          ctx.moveTo(cx - s * 0.85, cy + s * 0.5);
+          ctx.lineTo(cx - s * 0.8, cy + s * 0.32);
+        },
+        b,
+        4,
+        12,
+      );
+    },
+  },
+  {
+    // Serpent dragon: S-curve body, open jaw, horn, accent whisker.
+    captions: ["龍", "DRAGON", "中華楼"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx - s * 0.75, cy + s * 0.7);
+          ctx.bezierCurveTo(cx - s * 0.1, cy + s * 0.55, cx - s * 0.55, cy + s * 0.05, cx + s * 0.05, cy - s * 0.02);
+          ctx.bezierCurveTo(cx + s * 0.6, cy - s * 0.08, cx + s * 0.1, cy - s * 0.5, cx + s * 0.55, cy - s * 0.62);
+          ctx.lineTo(cx + s * 0.82, cy - s * 0.55);
+          ctx.lineTo(cx + s * 0.6, cy - s * 0.4);
+          ctx.moveTo(cx + s * 0.55, cy - s * 0.62);
+          ctx.lineTo(cx + s * 0.45, cy - s * 0.85);
+          // dorsal spikes
+          ctx.moveTo(cx - s * 0.45, cy + s * 0.52);
+          ctx.lineTo(cx - s * 0.52, cy + s * 0.34);
+          ctx.moveTo(cx - s * 0.1, cy + s * 0.28);
+          ctx.lineTo(cx - s * 0.22, cy + s * 0.14);
+          ctx.moveTo(cx + s * 0.3, cy - s * 0.18);
+          ctx.lineTo(cx + s * 0.18, cy - s * 0.32);
+        },
+        a,
+        6,
+        18,
+      );
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx + s * 0.82, cy - s * 0.55);
+          ctx.quadraticCurveTo(cx + s * 0.97, cy - s * 0.45, cx + s * 0.88, cy - s * 0.28);
+        },
+        b,
+        3.5,
+        10,
+      );
+      glowDot(ctx, cx + s * 0.58, cy - s * 0.55, s * 0.05, b);
+    },
+  },
+  {
+    // Rocket with porthole and exhaust flame.
+    captions: ["ARCADE", "ロケット", "GAME ON"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      glowStroke(
+        ctx,
+        () => {
+          ctx.moveTo(cx - s * 0.28, cy + s * 0.35);
+          ctx.lineTo(cx - s * 0.28, cy - s * 0.15);
+          ctx.quadraticCurveTo(cx - s * 0.28, cy - s * 0.7, cx, cy - s * 0.88);
+          ctx.quadraticCurveTo(cx + s * 0.28, cy - s * 0.7, cx + s * 0.28, cy - s * 0.15);
+          ctx.lineTo(cx + s * 0.28, cy + s * 0.35);
+          ctx.closePath();
+          ctx.moveTo(cx - s * 0.28, cy + s * 0.05);
+          ctx.lineTo(cx - s * 0.55, cy + s * 0.45);
+          ctx.lineTo(cx - s * 0.28, cy + s * 0.35);
+          ctx.moveTo(cx + s * 0.28, cy + s * 0.05);
+          ctx.lineTo(cx + s * 0.55, cy + s * 0.45);
+          ctx.lineTo(cx + s * 0.28, cy + s * 0.35);
+        },
+        a,
+        6,
+        18,
+      );
+      glowStroke(
+        ctx,
+        () => {
+          arcFrom(ctx, cx, cy - s * 0.3, s * 0.13, 0, Math.PI * 2);
+          ctx.moveTo(cx - s * 0.15, cy + s * 0.42);
+          ctx.lineTo(cx - s * 0.06, cy + s * 0.62);
+          ctx.lineTo(cx + s * 0.02, cy + s * 0.45);
+          ctx.lineTo(cx + s * 0.1, cy + s * 0.68);
+          ctx.lineTo(cx + s * 0.15, cy + s * 0.42);
+        },
+        b,
+        3.5,
+        12,
+      );
+    },
+  },
+  {
+    // Pair of dice, one tilted; pips in the accent color.
+    captions: ["CASINO", "カジノ", "777"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      const h1 = s * 0.34;
+      const d1x = cx - s * 0.32;
+      const d1y = cy - s * 0.18;
+      const d2x = cx + s * 0.36;
+      const d2y = cy + s * 0.3;
+      const rot = 0.32;
+      glowStroke(
+        ctx,
+        () => {
+          roundRectPath(ctx, d1x - h1, d1y - h1, h1 * 2, h1 * 2, 8);
+          ctx.save();
+          ctx.translate(d2x, d2y);
+          ctx.rotate(rot);
+          roundRectPath(ctx, -h1 * 0.9, -h1 * 0.9, h1 * 1.8, h1 * 1.8, 8);
+          ctx.restore();
+        },
+        a,
+        6,
+        18,
+      );
+      const p = s * 0.16;
+      glowDot(ctx, d1x - p, d1y - p, s * 0.055, b);
+      glowDot(ctx, d1x, d1y, s * 0.055, b);
+      glowDot(ctx, d1x + p, d1y + p, s * 0.055, b);
+      const c = Math.cos(rot);
+      const n = Math.sin(rot);
+      const q = s * 0.13;
+      glowDot(ctx, d2x + (-q * c - -q * n), d2y + (-q * n + -q * c), s * 0.05, b);
+      glowDot(ctx, d2x + (q * c - q * n), d2y + (q * n + q * c), s * 0.05, b);
+    },
+  },
+  {
+    // Umbrella with hooked handle, rain ticks in the accent color.
+    captions: ["RAIN BAR", "アメヤ", "傘"],
+    paint: (ctx, cx, cy, s, a, b) => {
+      glowStroke(
+        ctx,
+        () => {
+          arcFrom(ctx, cx, cy + s * 0.05, s * 0.78, Math.PI, Math.PI * 2);
+          for (let i = 0; i < 4; i++) {
+            arcFrom(ctx, cx - s * 0.585 + i * s * 0.39, cy + s * 0.05, s * 0.195, 0, Math.PI);
+          }
+          ctx.moveTo(cx, cy - s * 0.9);
+          ctx.lineTo(cx, cy + s * 0.55);
+          arcFrom(ctx, cx + s * 0.12, cy + s * 0.55, s * 0.12, Math.PI, 0, true);
+        },
+        a,
+        6,
+        18,
+      );
+      glowStroke(
+        ctx,
+        () => {
+          for (const [dx, dy] of [
+            [-0.95, -0.35],
+            [0.9, -0.5],
+            [0.72, 0.15],
+          ]) {
+            ctx.moveTo(cx + s * dx, cy + s * dy);
+            ctx.lineTo(cx + s * (dx + 0.08), cy + s * (dy + 0.22));
+          }
+        },
+        b,
+        3.5,
+        10,
+      );
+    },
+  },
+];
+
+/** One blade-style pictorial sign: plate + border + icon + themed caption. */
+function buildPictorial(rand: Rand, index: number): HTMLCanvasElement {
+  const W = 256;
+  const H = 384;
+  const [canvas, ctx] = newCanvas(W, H);
+  const icon = PICTORIAL_ICONS[index % PICTORIAL_ICONS.length];
+  const a = pick(NEON_PALETTE, rand);
+  const b = pick(NEON_PALETTE, rand);
+
+  if (rand() < 0.8) backingPlate(ctx, W, H);
+  if (rand() < 0.75) borderTube(ctx, W, H, rand() < 0.5 ? b : a);
+
+  const withCaption = rand() < 0.8;
+  if (withCaption) {
+    icon.paint(ctx, W / 2, 150, 78, a, b, rand);
+    const caption = pick(icon.captions, rand);
+    // Caption tube in whichever color the icon body didn't lead with.
+    let px = 44;
+    ctx.font = `900 ${px}px ${FONT_STACK}`;
+    while (px > 20 && ctx.measureText(caption).width > W - 56) {
+      px -= 3;
+      ctx.font = `900 ${px}px ${FONT_STACK}`;
+    }
+    glowText(ctx, caption, W / 2, 310, px, rand() < 0.4 ? b : a);
+  } else {
+    icon.paint(ctx, W / 2, H / 2, 95, a, b, rand);
+  }
   return canvas;
 }
 
@@ -550,6 +1080,11 @@ function ensureGenerated(): void {
     materials.set(meta.key, mat);
     flickerStates.push({ mat, phase: rand() * 100 });
   }
+  // Separate stream so adding pictorials doesn't reshuffle the signs above.
+  const prand = lcg(CATALOG_SEED ^ 0x5eed);
+  PROC_NEON_PICTORIAL.forEach((meta, i) => {
+    materials.set(meta.key, makeMaterial(buildPictorial(prand, i)));
+  });
 }
 
 /**
@@ -571,6 +1106,7 @@ export function getProceduralAdMeta(key: string): ProceduralAdMeta | undefined {
   for (const m of PROC_NEON_VERTICAL) if (m.key === key) return m;
   for (const m of PROC_NEON_HORIZONTAL) if (m.key === key) return m;
   for (const m of PROC_NEON_FLICKER) if (m.key === key) return m;
+  for (const m of PROC_NEON_PICTORIAL) if (m.key === key) return m;
   for (const f of PROC_LOGO_FAMILIES) {
     if (f.wide.key === key) return f.wide;
     if (f.text.key === key) return f.text;

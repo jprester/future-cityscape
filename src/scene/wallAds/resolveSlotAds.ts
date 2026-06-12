@@ -13,6 +13,7 @@ import {
   PROC_NEON_VERTICAL,
   PROC_NEON_HORIZONTAL,
   PROC_NEON_FLICKER,
+  PROC_NEON_PICTORIAL,
   type ProceduralAdMeta,
 } from "./proceduralNeon";
 import type { WallAd } from "./types";
@@ -78,6 +79,8 @@ const SMALL_FALLOFF_FAR = 1500;
 const SMALL_BIG_AD_CHANCE = 0.15;
 // Share of neon-bucket picks (1-4 / 4-1) drawn from the code-generated
 // catalog (proceduralNeon.ts) instead of the PNG set — unlimited variety.
+// The 2-3 bucket uses the same chance for the generated pictorial signs
+// (ramen bowl / martini / torii / …).
 const PROC_NEON_CHANCE = 0.65;
 // Flicker signs are rationed to a few placements near the vantage so the
 // dying-tube effect stays special instead of strobing the whole city.
@@ -226,6 +229,13 @@ export function resolveSmallSlotAdsProcedural(
                 : PROC_NEON_HORIZONTAL;
               meta = pool[Math.floor(rand() * pool.length)];
             }
+            matKey = meta.key;
+            aspect = meta.aspect;
+          } else if (entry.bucket === "2-3" && rand() < PROC_NEON_CHANCE) {
+            const meta =
+              PROC_NEON_PICTORIAL[
+                Math.floor(rand() * PROC_NEON_PICTORIAL.length)
+              ];
             matKey = meta.key;
             aspect = meta.aspect;
           } else {
