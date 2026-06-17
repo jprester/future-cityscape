@@ -90,6 +90,26 @@ export const RESIDENTIAL_SERIES: BuildingSeries = {
         emissiveBase: 0.8,
       },
     },
+    {
+      key: "residential_05",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/residential/2026-residential-building-5.glb",
+        emissiveBase: 0.6,
+        // scale: 0.85,
+      },
+    },
+    {
+      key: "residential_06",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/residential/2026-residential-building-6.glb",
+        emissiveBase: 1,
+        // scale: 0.85,
+      },
+    },
   ],
 };
 
