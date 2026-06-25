@@ -110,6 +110,15 @@ export const RESIDENTIAL_SERIES: BuildingSeries = {
         // scale: 0.85,
       },
     },
+    {
+      key: "residential_07",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/residential/2026-residential-building-7.glb",
+        emissiveBase: 0.5,
+      },
+    },
   ],
 };
 
@@ -480,7 +489,7 @@ export const TOWER_SERIES: BuildingSeries = {
       source: {
         format: "glb",
         path: "models/buildings/towers/new-massive-skyscraper.001.glb",
-        emissiveBase: 2.0,
+        emissiveBase: 1.0,
       },
     },
     {

@@ -201,8 +201,7 @@ export function FiniteCitySystem() {
       // mid-rise = the taller commercial GLBs (smaller rooftop plume, core only);
       // residential is low-rise and gets no steam.
       const isTall =
-        b.modelKey.startsWith("skyscraper_") ||
-        b.modelKey.startsWith("tower_");
+        b.modelKey.startsWith("skyscraper_") || b.modelKey.startsWith("tower_");
       const isMidRise = b.modelKey.startsWith("commercial_");
 
       // Per-tier plume settings: tall towers get the big high plume; mid-rise
@@ -529,6 +528,7 @@ function FiniteCityGround({
       centerZ: (bottomEdge + topEdge) / 2,
       map: cloneTiled(game.assets.getTexture("ground")),
       emissiveMap: cloneTiled(game.assets.getTexture("ground_em")),
+      roughnessMap: cloneTiled(game.assets.getTexture("ground_rough")),
     };
   }, [visibility.ground, layout.bounds, game?.assets, game?.assets?.loaded]);
 
@@ -537,6 +537,7 @@ function FiniteCityGround({
     return () => {
       groundPlane?.map?.dispose();
       groundPlane?.emissiveMap?.dispose();
+      groundPlane?.roughnessMap?.dispose();
     };
   }, [groundPlane]);
 
@@ -561,16 +562,35 @@ function FiniteCityGround({
           position={[groundPlane.centerX, 0, groundPlane.centerZ]}
           receiveShadow>
           <planeGeometry args={[groundPlane.width, groundPlane.depth]} />
-          {/* Matte asphalt: the tiled ground texture provides the detail and
-              the emissive map keeps the subtle blue ground glow. */}
+          {/* Cyberpunk ground level: the tiled diffuse texture provides the
+              detail, the roughness map drives the wet/matte variation, and the
+              emissive map keeps the subtle blue ground glow.
+
+              Reflections (cheap path): the ground reflects scene.environment
+              (the env_night IBL map, set globally in GameBridge) — no extra
+              render pass. metalness raises the reflection strength so it reads
+              when looking down at near-normal angles (a metalness=0 dielectric
+              only reflects ~4% there, i.e. invisible), and the roughnessMap makes
+              the "wet" texels reflect sharper than the matte ones.
+
+              TODO upgrade: for true mirror reflections of the actual buildings/
+              neon, swap this <meshStandardMaterial> for drei's
+              <MeshReflectorMaterial resolution={1024} blur={[400,100]}
+              mixStrength={2} roughnessMap={...} metalness={0.6} /> — costs one
+              extra scene render pass per frame. */}
           <meshStandardMaterial
-            roughness={0.8}
-            metalness={0}
-            color="#3a3a48"
+            roughness={1}
+            metalness={0.3}
+            envMapIntensity={1.5}
+            color="#ffffff"
             map={groundPlane.map ?? undefined}
+            roughnessMap={groundPlane.roughnessMap ?? undefined}
             emissiveMap={groundPlane.emissiveMap ?? undefined}
-            emissive="#0090ff"
-            emissiveIntensity={0.2}
+            // emissive color MUST be non-black: output = emissive × emissiveMap ×
+            // intensity, so a black emissive zeroes the map out no matter how high
+            // the intensity. White lets the emissive texture's own colors show.
+            emissive="#ffffff"
+            emissiveIntensity={0.8}
           />
         </mesh>
       )}

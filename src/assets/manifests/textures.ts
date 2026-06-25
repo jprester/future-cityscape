@@ -47,9 +47,10 @@ export function createTextureManifest(anisotropy: number): TextureManifest {
       },
     },
 
-    // Ground
-    ground: { path: "textures/ground/ground.jpg" },
-    ground_em: { path: "textures/ground/ground_em.jpg" },
+    // Ground — cyberpunk ground-level set (diffuse + emissive + roughness)
+    ground: { path: "textures/ground/cyberpunk-ground-level_diffuse.png" },
+    ground_em: { path: "textures/ground/cyberpunk-ground-level_emissive.png" },
+    ground_rough: { path: "textures/ground/cyberpunk-ground-level_roughness.png" },
 
     // Traffic cars
     cars: { path: "textures/cars/cars.jpg" },
