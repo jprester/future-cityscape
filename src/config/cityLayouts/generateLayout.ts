@@ -42,11 +42,16 @@ const COMMERCIAL_KEYS = COMMERCIAL_SERIES.variants.map((v) => v.key);
 //   r  = residential block (4 noise-picked residential GLBs)
 //   c  = commercial block  (4 noise-picked commercial GLBs)
 //   m  = mixed — noise picks residential OR commercial per sub-building
-//   T  = tower — assigns the next UNUSED tower model (each placed once, no repeats)
-//   A-L = specific tower variant (A=tower_01, B=tower_02, ... L=tower_12)
-//   S  = skyscraper — assigns the next UNUSED skyscraper model (each placed once)
-//   1-N = specific skyscraper from the de-duplicated pool (1-indexed)
+//   T   = tower — auto-assigns the next UNUSED tower model (each placed once)
+//   T07 = a SPECIFIC tower, by registry number      (T07 -> tower_07)
+//   S   = skyscraper — auto-assigns the next UNUSED skyscraper (each placed once)
+//   S03 = a SPECIFIC skyscraper, by registry number (S03 -> skyscraper_03)
 //   X  = rooftop vantage building (the player spawns on its roof, dead center)
+//
+// Cells are whitespace-separated, so the multi-char T##/S## tokens just work.
+// The number is the registry key suffix (see buildingRegistry.ts), 1- or
+// 2-digit, so `T7` and `T07` are equivalent. Auto `T`/`S` cells skip any model
+// you placed explicitly, so every tower/skyscraper still appears at most once.
 //
 // Grid reads top-to-bottom = north-to-south (gj 0..16).
 //
@@ -102,24 +107,28 @@ const SKYSCRAPER_POOL = dedupeByModel(SKYSCRAPER_SERIES.variants).filter(
 // with a close ring of unique skyscrapers (S) and unique towers (T) as the
 // dominant skyline. Residential (r) sits only on the outer rings — the
 // fog-edge outskirts. Each S/T is a distinct model, placed at most once.
+// Fixed-width grid: every cell is padded to a 3-char field (the widest token,
+// e.g. "T07"/"S03"), so columns stay aligned as a readable map even when some
+// cells are multi-char specific-model tokens. Cells are whitespace-separated,
+// so the exact padding is cosmetic — keep them lined up when hand-editing.
 const CITY_TEMPLATE = `
-. . . . . . . . . . . . . . . . .
-. r r r r r r r r r r r r r r r .
-. r r r r r r r r r r r r r r r .
-. r r m m m m m m m m m m m r r .
-. r r m T m T m m T m m T m r r .
-. r r m m S m S m m S m m m r r .
-. r r m m m m m m m m S T m r r .
-. r r m T S m m m m m m m m r r .
-. r r m m m m m X m m S m m r r .
-. r r m m S m m m m m m T m r r .
-. r r m T m m m m m m S m m r r .
-. r r m m S m m S m S m m m r r .
-. r r m T m m T m m T m T m r r .
-. r r m m m m m m S m m m m r r .
-. r r r r r r r r r r r r r r r .
-. r r r r r r r r r r r r r r r .
-. . . . . . . . . . . . . . . . .
+.   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .
+.   r   r   r   r   r   r   r   r   r   r   r   r   r   r   r   .
+.   r   r   r   r   r   r   r   r   r   r   r   r   r   r   r   .
+.   r   r   c   c   c   c   m   m   m   m   c   c   c   r   r   .
+.   r   r   m   T01 c   T02 c   c   T03 c   m   T04 m   r   r   .
+.   r   r   m   c   S01 c   S02 m   c   S03 m   m   m   r   r   .
+.   r   r   m   c   r   c   c   c   r   c   S04 T05 m   r   r   .
+.   r   r   m   T06 S05 c   c   c   c   r   m   m   m   r   r   .
+.   r   r   m   c   c   c   c   X   c   c   S06 m   m   r   r   .
+.   r   r   m   c   S08 c   r   c   c   s12   m   T07 m   r   r   .
+.   r   r   m   T08 c   r   c   c   c   c   S16 m   m   r   r   .
+.   r   r   m   c   T04 c   c   S11 c   S10 m   m   m   r   r   .
+.   r   r   m   T09 c   c   T10 m   c   T11 m   T12 m   r   r   .
+.   r   r   c   c   r   c   c   r   S09 c   c   c   c   r   r   .
+.   r   r   r   r   r   r   r   r   r   r   r   r   r   r   r   .
+.   r   r   r   r   r   r   r   r   r   r   r   r   r   r   r   .
+.   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .
 `;
 
 // ── Template parser ──────────────────────────────────────────────────────────
@@ -147,26 +156,63 @@ function warnExhausted(kind: string, ch: string): void {
   }
 }
 
+// Every key the registry actually defines, so explicit T##/S## tokens can be
+// validated. Explicit placement allows ANY registry key — including ones the
+// auto pool excludes (the reserved vantage skyscraper, or variants that dedupe
+// to a shared GLB) — since picking those on purpose is the whole point.
+const TOWER_KEYS = new Set(TOWER_SERIES.variants.map((v) => v.key));
+const SKYSCRAPER_KEYS = new Set(SKYSCRAPER_SERIES.variants.map((v) => v.key));
+
+// `T07` -> "tower_07", `S3` -> "skyscraper_03". Returns null for any non-token
+// cell. The numeric suffix is the registry key number, padded to 2 digits.
+function parseSpecificToken(
+  cell: string,
+): { kind: "tower" | "skyscraper"; key: string } | null {
+  const m = /^([TS])(\d{1,2})$/.exec(cell);
+  if (!m) return null;
+  const kind = m[1] === "T" ? "tower" : "skyscraper";
+  const key = `${kind}_${m[2].padStart(2, "0")}`;
+  return { kind, key };
+}
+
+function warnUnknownToken(cell: string): void {
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `CITY_TEMPLATE: '${cell}' names a building model that doesn't exist in ` +
+        `the registry; that block was left empty.`,
+    );
+  }
+}
+
 function parseTemplate(template: string): ParsedBlock[][] {
-  // Map A-L to specific tower models
-  const specificTowerMap = new Map<string, string>();
-  for (let i = 0; i < TOWER_POOL.length && i < 12; i++) {
-    specificTowerMap.set(String.fromCharCode(65 + i), TOWER_POOL[i]);
-  }
-  // Map 1-N to specific skyscraper models
-  const specificSkyscraperMap = new Map<string, string>();
-  for (let i = 0; i < SKYSCRAPER_POOL.length; i++) {
-    specificSkyscraperMap.set(String(i + 1), SKYSCRAPER_POOL[i]);
-  }
-
-  // Each model is placed at most once — these indices never wrap.
-  let autoTowerIndex = 0;
-  let autoSkyscraperIndex = 0;
-
   const rows = template
     .trim()
     .split("\n")
     .map((line) => line.trim().split(/\s+/));
+
+  // First pass: collect every model placed explicitly (T##/S##) so the auto
+  // `T`/`S` cells can skip them and the "each model at most once" guarantee
+  // holds even when explicit and auto cells are mixed in the same layout.
+  const explicit = new Set<string>();
+  for (const row of rows) {
+    for (const cell of row) {
+      const tok = parseSpecificToken(cell);
+      if (!tok) continue;
+      const valid =
+        tok.kind === "tower"
+          ? TOWER_KEYS.has(tok.key)
+          : SKYSCRAPER_KEYS.has(tok.key);
+      if (valid) explicit.add(tok.key);
+    }
+  }
+
+  // Auto-fill queues: pool order, minus anything placed explicitly. Each model
+  // is placed at most once, so these indices never wrap.
+  const autoTowers = TOWER_POOL.filter((k) => !explicit.has(k));
+  const autoSkyscrapers = SKYSCRAPER_POOL.filter((k) => !explicit.has(k));
+  let autoTowerIndex = 0;
+  let autoSkyscraperIndex = 0;
 
   return rows.map((row) =>
     row.map((cell): ParsedBlock => {
@@ -185,32 +231,32 @@ function parseTemplate(template: string): ParsedBlock[][] {
         case "m":
           return { type: "mixed" };
         case "T": {
-          if (autoTowerIndex >= TOWER_POOL.length) {
+          if (autoTowerIndex >= autoTowers.length) {
             warnExhausted("tower", "T");
             return { type: "empty" };
           }
-          return { type: "tower", towerKey: TOWER_POOL[autoTowerIndex++] };
+          return { type: "tower", towerKey: autoTowers[autoTowerIndex++] };
         }
         case "S": {
-          if (autoSkyscraperIndex >= SKYSCRAPER_POOL.length) {
+          if (autoSkyscraperIndex >= autoSkyscrapers.length) {
             warnExhausted("skyscraper", "S");
             return { type: "empty" };
           }
           return {
             type: "tower",
-            towerKey: SKYSCRAPER_POOL[autoSkyscraperIndex++],
+            towerKey: autoSkyscrapers[autoSkyscraperIndex++],
           };
         }
         default: {
-          // Check for specific tower letter (A-L)
-          const specific = specificTowerMap.get(cell);
-          if (specific) {
-            return { type: "tower", towerKey: specific };
-          }
-          // Check for specific skyscraper digit (1-4)
-          const skyscraper = specificSkyscraperMap.get(cell);
-          if (skyscraper) {
-            return { type: "tower", towerKey: skyscraper };
+          // Specific model token, e.g. `T07` -> tower_07, `S03` -> skyscraper_03.
+          const tok = parseSpecificToken(cell);
+          if (tok) {
+            const valid =
+              tok.kind === "tower"
+                ? TOWER_KEYS.has(tok.key)
+                : SKYSCRAPER_KEYS.has(tok.key);
+            if (valid) return { type: "tower", towerKey: tok.key };
+            warnUnknownToken(cell);
           }
           return { type: "empty" };
         }
