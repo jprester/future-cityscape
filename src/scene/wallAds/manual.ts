@@ -93,7 +93,7 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
   { gi: 9, gj: 7, adId: 16, face: 0, height: 80, offsetOut: 80, y: 180 }, // holographic letters
 
   // Middle-left commercial area — tall neon banner
-  { gi: 8, gj: 14, adId: 12, face: 2, height: 70, y: 430, offsetOut: 50 }, // neon Japanese banner
+  { gi: 8, gj: 14, adId: 12, face: 2, height: 70, y: 130, offsetOut: 0 }, // neon Japanese banner
 
   // Mid-upper skyscraper row — portrait ads tucked partially into the building
   // for an embedded look (not floating).
@@ -119,9 +119,9 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
     face: 2,
     height: 70,
     offsetOut: 22,
-    y: 170,
+    y: 120,
     style: "holo",
-    emissiveIntensity: 0.4,
+    emissiveIntensity: 0.8,
   }, // cdbj
   {
     gi: 8,

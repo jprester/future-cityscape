@@ -90,16 +90,16 @@ export const RESIDENTIAL_SERIES: BuildingSeries = {
         emissiveBase: 0.8,
       },
     },
-    {
-      key: "residential_05",
-      weight: 1,
-      source: {
-        format: "glb",
-        path: "models/buildings/residential/2026-residential-building-5.glb",
-        emissiveBase: 0.6,
-        // scale: 0.85,
-      },
-    },
+    // {
+    //   key: "residential_05",
+    //   weight: 1,
+    //   source: {
+    //     format: "glb",
+    //     path: "models/buildings/residential/2026-residential-building-5.glb",
+    //     emissiveBase: 0.6,
+    //     // scale: 0.85,
+    //   },
+    // },
     {
       key: "residential_06",
       weight: 1,
@@ -128,15 +128,15 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
   id: "commercial",
   ads: ["ads_s_02_01", "ads_s_02_02"],
   variants: [
-    {
-      key: "commercial_01",
-      weight: 1,
-      source: {
-        format: "glb",
-        path: "models/buildings/commercial/2026-commercial-building-1.glb",
-        emissiveBase: 0.9,
-      },
-    },
+    // {
+    //   key: "commercial_01",
+    //   weight: 1,
+    //   source: {
+    //     format: "glb",
+    //     path: "models/buildings/commercial/2026-commercial-building-1.glb",
+    //     emissiveBase: 0.9,
+    //   },
+    // },
     {
       key: "commercial_02",
       weight: 1,
@@ -173,15 +173,15 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
         emissiveBase: 0.9,
       },
     },
-    {
-      key: "commercial_06",
-      weight: 1,
-      source: {
-        format: "glb",
-        path: "models/buildings/commercial/2026-commercial-building-6.glb",
-        emissiveBase: 0.9,
-      },
-    },
+    // {
+    //   key: "commercial_06",
+    //   weight: 1,
+    //   source: {
+    //     format: "glb",
+    //     path: "models/buildings/commercial/2026-commercial-building-6.glb",
+    //     emissiveBase: 0.9,
+    //   },
+    // },
     {
       key: "commercial_07",
       weight: 1,
@@ -216,6 +216,54 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
         format: "glb",
         path: "models/buildings/commercial/2026-commercial-building-10.glb",
         emissiveBase: 0.9,
+      },
+    },
+    {
+      key: "commercial_11",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-11.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      key: "commercial_12",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-12.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      key: "commercial_13",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-13.glb",
+        emissiveBase: 0.9,
+        scale: 1,
+      },
+    },
+    {
+      key: "commercial_14",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-14.glb",
+        emissiveBase: 0.9,
+        scale: 1,
+      },
+    },
+    {
+      key: "commercial_15",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-15.glb",
+        emissiveBase: 0.9,
+        scale: 0.8,
       },
     },
   ],
@@ -338,7 +386,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/buildings/skyscrapers/dark-skyscraper.glb",
+        path: "models/buildings/skyscrapers/2026-custom-skyscraper1-bright.glb",
         emissiveBase: 1.0,
       },
     },
@@ -347,7 +395,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/buildings/skyscrapers/dark-skyscraper.glb",
+        path: "models/buildings/skyscrapers/cylinder-building.glb",
         emissiveBase: 1.0,
       },
     },
@@ -356,21 +404,12 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/buildings/skyscrapers/cylinder-building.glb",
-        emissiveBase: 1.0,
-      },
-    },
-    {
-      key: "skyscraper_15",
-      weight: 1,
-      source: {
-        format: "glb",
         path: "models/buildings/skyscrapers/triangular-high-rise.glb",
         emissiveBase: 1.0,
       },
     },
     {
-      key: "skyscraper_16",
+      key: "skyscraper_15",
       weight: 1,
       source: {
         format: "glb",
