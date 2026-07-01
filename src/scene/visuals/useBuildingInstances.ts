@@ -50,8 +50,11 @@ const MODELS_WITH_EMBEDDED_MATERIALS = getEmbeddedMaterialKeys();
 // Per-model default rotation offsets (e.g. to correct orientation from Blender)
 const MODEL_ROTATIONS = getModelRotations();
 
-// Max instances per (model, material) combination
-const MAX_INSTANCES_PER_COMBO = 150;
+// Max instances per (model, material) combination. Headroom above the busiest
+// key: the residential footprint packer favours small (2×1) footprints to fill
+// leftover slots, so those variants can top ~160 instances across the whole
+// grid — anything over this cap is silently dropped (buildings would vanish).
+const MAX_INSTANCES_PER_COMBO = 256;
 
 // Create a composite key for (model, material) pair
 function getComboKey(modelKey: string, materialKey: string): string {

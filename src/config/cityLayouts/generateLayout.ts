@@ -27,12 +27,49 @@ function fixNoise(noise: number): number {
 const NOISEFACTOR = 0.0017;
 const CELL_SIZE = CITY_BLOCK_SIZE + ROAD_WIDTH;
 
-// Residential & commercial blocks each place 4 noise-picked GLB models per
-// block. The candidate keys are derived straight from the registry so adding a
-// model there is the only edit needed. All four categories are GLB with
-// embedded materials, so placed buildings always use their "__embedded_{key}".
+// Commercial & mixed blocks each place 4 noise-picked GLB models per block; the
+// candidate keys are derived straight from the registry so adding a model there
+// is the only edit needed. Residential blocks instead use a footprint slot
+// packer (see `packResidentialBlock`). All four categories are GLB with embedded
+// materials, so placed buildings always use their "__embedded_{key}".
 const RESIDENTIAL_KEYS = RESIDENTIAL_SERIES.variants.map((v) => v.key);
 const COMMERCIAL_KEYS = COMMERCIAL_SERIES.variants.map((v) => v.key);
+
+// The residential variant list, kept whole so the packer can read each model's
+// footprint. Every residential variant declares a footprint in block slots.
+const RESIDENTIAL_VARIANTS = RESIDENTIAL_SERIES.variants;
+
+// Footprint (in block slots) per model key, for any variant that declares one.
+// Used both by the residential packer and to fit-scale a wide residential model
+// when it lands in the old 2×2 grid of a mixed block.
+const FOOTPRINTS = new Map<string, { w: number; d: number }>();
+for (const s of [RESIDENTIAL_SERIES, COMMERCIAL_SERIES]) {
+  for (const v of s.variants)
+    if (v.footprint) FOOTPRINTS.set(v.key, v.footprint);
+}
+
+// ── Footprint slot grid ──────────────────────────────────────────────────────
+// A city block is divided into a SLOTS×SLOTS grid; each slot is CITY_BLOCK_SIZE/
+// SLOTS units square (128/4 = 32 u). Residential buildings reserve a rectangle
+// of slots (their `footprint`) and are placed at natural size, centred in that
+// rectangle — leftover slots read as yards/alleys/plazas, which is exactly the
+// "60–90 % occupied" look the placement doc calls for.
+const SLOTS = 4;
+const SLOT_SIZE = CITY_BLOCK_SIZE / SLOTS; // 32
+
+// Small deterministic PRNG (mulberry32). The Perlin `noise` field is great for
+// smoothly-varying values but a poor uniform stream for the packer's discrete
+// choices; this gives repeatable per-block randomness seeded from the block's
+// grid coords + world seed, so layouts stay stable across reloads.
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 // ── City template ────────────────────────────────────────────────────────────
 //
@@ -118,12 +155,12 @@ const CITY_TEMPLATE = `
 .   r   r   c   c   c   c   m   m   m   m   c   c   c   r   r   .
 .   r   r   m   T01 c   T02 c   c   T03 c   m   S13 m   r   r   .
 .   r   r   m   c   S01 c   S02 r   c   S03 m   m   m   r   r   .
-.   r   r   m   c   r   r   c   c   r   c   S04 T05 m   r   r   .
+.   r   r   m   c   r   r   r   c   r   c   S04 T05 m   r   r   .
 .   r   r   m   S12 S05 c   c   c   c   r   r   m   m   r   r   .
-.   r   r   m   c   c   c   c   X   c   c   S06 m   m   r   r   .
+.   r   r   m   c   r   r   c   X   c   c   S06 m   m   r   r   .
 .   r   r   m   c   S08 c   r   c   c   S12   c   T07 m   r   r   .
-.   r   r   m   T08 c   r   c   c   c   c   S16 m   m   r   r   .
-.   r   r   m   c   c c   c   S11 c   S10 m   m   m   r   r   .
+.   r   r   m   T08 c   r   c   c   r   c   S16 m   m   r   r   .
+.   r   r   m   c   r c   c   S11 c   S10 m   m   m   r   r   .
 .   r   r   m   T09 c   S17   T10 c   c   T11 m   T12 m   r   r   .
 .   r   r   c   c   r   c   c   r   S09 c   c   c   c   r   r   .
 .   r   r   r   r   r   r   r   r   r   r   r   r   r   r   r   .
@@ -413,8 +450,11 @@ export function generateLayout(
           gi,
           gj,
         });
+      } else if (block.type === "residential") {
+        // ── Residential — footprint slot packing ─────────────────────────
+        packResidentialBlock(blockX, blockZ, gi, gj, seed, buildings);
       } else {
-        // ── Small buildings — 2×2 grid per block ─────────────────────────
+        // ── Small buildings — 2×2 grid per block (commercial / mixed) ────
         placeSmallBuildings(
           block.type,
           blockX,
@@ -496,6 +536,101 @@ export function generateLayout(
   };
 }
 
+// ── Residential footprint packing ────────────────────────────────────────────
+//
+// Fill a residential block's SLOTS×SLOTS grid with variable-footprint buildings
+// (2×1 … 3×2 slots) until it reaches a per-block target occupancy (~65–90 %),
+// leaving the remaining slots as gaps (yards / alleys / plazas). Each building
+// is placed at natural size, centred in its reserved slot rectangle, so they
+// never overlap. Rotation is one of 0/90/180/270°; 90/270 swap the footprint's
+// W/D so slabs appear in both orientations. Deterministic per (block, seed).
+const RESIDENTIAL_ROTATIONS = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
+
+function packResidentialBlock(
+  blockX: number,
+  blockZ: number,
+  gi: number,
+  gj: number,
+  seed: number,
+  buildings: FiniteBuildingPlacement[],
+): void {
+  const rng = mulberry32(
+    (Math.imul(gi, 73856093) ^
+      Math.imul(gj, 19349663) ^
+      Math.imul(seed, 83492791)) >>>
+      0,
+  );
+
+  const occupied = new Array<boolean>(SLOTS * SLOTS).fill(false);
+  const at = (sx: number, sz: number) => sz * SLOTS + sx;
+
+  // Target filled-slot count (~65–90 % of the 16 slots).
+  const targetFilled = Math.round((0.65 + rng() * 0.25) * SLOTS * SLOTS);
+  let filled = 0;
+
+  // Bounded attempts: each iteration tries one random variant + orientation and
+  // places it in a random free spot that fits, or gives up on that single try
+  // (a later, smaller footprint may still slot into the leftover space).
+  const MAX_ATTEMPTS = 40;
+  for (
+    let attempt = 0;
+    attempt < MAX_ATTEMPTS && filled < targetFilled;
+    attempt++
+  ) {
+    const variant =
+      RESIDENTIAL_VARIANTS[Math.floor(rng() * RESIDENTIAL_VARIANTS.length)];
+    const fp = variant.footprint ?? { w: 2, d: 2 };
+
+    // Orientation: 90/270° swap the footprint's X/Z extent.
+    const rotIndex = Math.floor(rng() * 4);
+    const swap = rotIndex === 1 || rotIndex === 3;
+    const fw = swap ? fp.d : fp.w;
+    const fd = swap ? fp.w : fp.d;
+    if (fw > SLOTS || fd > SLOTS) continue;
+
+    // Gather every free top-left slot the footprint fits at, then pick one.
+    const spots: Array<[number, number]> = [];
+    for (let sz = 0; sz <= SLOTS - fd; sz++) {
+      for (let sx = 0; sx <= SLOTS - fw; sx++) {
+        let free = true;
+        for (let dz = 0; dz < fd && free; dz++) {
+          for (let dx = 0; dx < fw; dx++) {
+            if (occupied[at(sx + dx, sz + dz)]) {
+              free = false;
+              break;
+            }
+          }
+        }
+        if (free) spots.push([sx, sz]);
+      }
+    }
+    if (spots.length === 0) continue;
+
+    const [sx, sz] = spots[Math.floor(rng() * spots.length)];
+    for (let dz = 0; dz < fd; dz++) {
+      for (let dx = 0; dx < fw; dx++) occupied[at(sx + dx, sz + dz)] = true;
+    }
+    filled += fw * fd;
+
+    const wx = blockX + (sx + fw / 2) * SLOT_SIZE;
+    const wz = blockZ + (sz + fd / 2) * SLOT_SIZE;
+    const heightJitter = 0.9 + rng() * 0.3; // subtle skyline variety
+
+    buildings.push({
+      modelKey: variant.key,
+      materialKey: `__embedded_${variant.key}`,
+      x: wx,
+      z: wz,
+      scaleX: 1,
+      scaleY: heightJitter,
+      scaleZ: 1,
+      rotationY: RESIDENTIAL_ROTATIONS[rotIndex],
+      gi,
+      gj,
+    });
+  }
+}
+
 // ── Small building placement ─────────────────────────────────────────────────
 
 type NoiseGen = {
@@ -529,6 +664,14 @@ function placeSmallBuildings(
 
       const type = selectSmallBuilding(blockType, typeNoise, subtypeNoise);
 
+      // A mixed-block cell is half the block = 2×2 slots. If a residential model
+      // with a bigger footprint (e.g. a 3-wide slab) lands here, shrink it
+      // uniformly so it still fits the cell instead of spilling into its
+      // neighbour. Models without a footprint (all commercial) get fit = 1, so
+      // their placement is unchanged.
+      const fp = FOOTPRINTS.get(type);
+      const fit = fp ? Math.min(1, 2 / fp.w, 2 / fp.d) : 1;
+
       // Every small building is a GLB with embedded materials. A light per-
       // instance vertical scale (`scale`) adds height variety across the block.
       buildings.push({
@@ -536,9 +679,9 @@ function placeSmallBuildings(
         materialKey: `__embedded_${type}`,
         x: wx,
         z: wz,
-        scaleX: 1,
-        scaleY: scale,
-        scaleZ: 1,
+        scaleX: fit,
+        scaleY: scale * fit,
+        scaleZ: fit,
         rotationY: (rotate * Math.PI) / 180,
         gi,
         gj,
