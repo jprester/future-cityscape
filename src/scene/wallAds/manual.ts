@@ -118,7 +118,7 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
     adId: 5,
     face: 2,
     height: 70,
-    offsetOut: 22,
+    offsetOut: 30,
     y: 120,
     style: "holo",
     emissiveIntensity: 0.8,
