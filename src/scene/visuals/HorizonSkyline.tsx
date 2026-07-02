@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AdditiveBlending,
+  BufferGeometry,
+  Float32BufferAttribute,
   Group,
   Mesh,
   CylinderGeometry,
@@ -287,4 +290,85 @@ export function HorizonSkyline({ visible }: { visible: boolean }) {
 
   if (!visible) return null;
   return <group ref={groupRef} />;
+}
+
+// ─── Starfield ────────────────────────────────────────────────────────────────
+
+// Sparse stars on a dome just inside the horizon band, filling the empty upper
+// sky. Points start above the band's alpha fade (elevation ≳ 17°) so they never
+// overlap the baked light-pollution glow. Two batches (faint majority, a few
+// brighter ones) with fog off and constant pixel size, so they stay crisp and
+// unfogged like the backdrop itself. Deterministic, so the sky doesn't reshuffle
+// between sessions.
+
+const STAR_DOME_RADIUS = 2500; // inside the horizon cylinder (2700)
+const STAR_MIN_ELEVATION = 0.3; // rad (~17°) — clear the skyline band
+const STAR_MAX_ELEVATION = 1.45; // rad — up to near-zenith
+
+function makeStarGeometry(count: number, seed: number): BufferGeometry {
+  let a = seed >>> 0;
+  const rand = () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const az = rand() * Math.PI * 2;
+    // Bias density toward the horizon (pow > 1 pushes samples low).
+    const el =
+      STAR_MIN_ELEVATION +
+      Math.pow(rand(), 1.6) * (STAR_MAX_ELEVATION - STAR_MIN_ELEVATION);
+    const r = STAR_DOME_RADIUS;
+    positions[i * 3] = Math.cos(az) * Math.cos(el) * r;
+    positions[i * 3 + 1] = Math.sin(el) * r;
+    positions[i * 3 + 2] = Math.sin(az) * Math.cos(el) * r;
+  }
+  const geo = new BufferGeometry();
+  geo.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  return geo;
+}
+
+export function Starfield({ visible = true }: { visible?: boolean }) {
+  const faint = useMemo(() => makeStarGeometry(520, 20260702), []);
+  const bright = useMemo(() => makeStarGeometry(90, 424242), []);
+
+  useEffect(
+    () => () => {
+      faint.dispose();
+      bright.dispose();
+    },
+    [faint, bright],
+  );
+
+  if (!visible) return null;
+  return (
+    <>
+      <points geometry={faint}>
+        <pointsMaterial
+          color="#9fb0d8"
+          size={1.6}
+          sizeAttenuation={false}
+          transparent
+          opacity={0.5}
+          blending={AdditiveBlending}
+          depthWrite={false}
+          fog={false}
+        />
+      </points>
+      <points geometry={bright}>
+        <pointsMaterial
+          color="#dfe8ff"
+          size={2.6}
+          sizeAttenuation={false}
+          transparent
+          opacity={0.8}
+          blending={AdditiveBlending}
+          depthWrite={false}
+          fog={false}
+        />
+      </points>
+    </>
+  );
 }

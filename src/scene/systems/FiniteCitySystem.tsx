@@ -24,7 +24,9 @@ import {
   type BuildingDescriptor,
 } from "../visuals/InstancedBuildings";
 import { CityBlockUpdateableVisuals } from "../visuals/CityBlockUpdateableVisuals";
-import { HorizonSkyline } from "../visuals/HorizonSkyline";
+import { HorizonSkyline, Starfield } from "../visuals/HorizonSkyline";
+import { FiniteCityTraffic } from "../visuals/FiniteCityTraffic";
+import { StreetGlow } from "../visuals/StreetGlow";
 import type { GameRuntime, UpdateableVisualState } from "../../types/game";
 import {
   FiniteCityWallAds,
@@ -364,6 +366,13 @@ export function FiniteCitySystem() {
         visibility={visibility}
       />
       <HorizonSkyline visible={visibility.buildings} />
+      <Starfield visible={visibility.buildings} />
+      <StreetGlow layout={layout} visible={visibility.ground} />
+      <FiniteCityTraffic
+        layout={layout}
+        game={gameRef.current}
+        visible={visibility.trafficCars}
+      />
       {visibility.buildings && (
         <InstancedBuildings buildings={buildings} game={gameRef.current} />
       )}

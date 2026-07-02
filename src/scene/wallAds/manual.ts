@@ -112,6 +112,9 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
   { gi: 11, gj: 8, adId: 11, face: 1, height: 30, y: 160 }, // square: image-1812
 
   // Center towers (gj=7)
+  // Billboard, not holo: the artwork is mostly dark, and the additive holo
+  // material can only ADD brightness — dark pixels vanish and the ad reads
+  // washed-out. The opaque LED-panel treatment shows the full image.
   {
     gi: 15,
     gj: 9,
@@ -120,8 +123,7 @@ export const WALL_ADS_MANUAL: WallAdManualEntry[] = [
     height: 70,
     offsetOut: 30,
     y: 120,
-    style: "holo",
-    emissiveIntensity: 0.8,
+    style: "billboard",
   }, // cdbj
   {
     gi: 8,
