@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Mesh, BoxGeometry, MeshStandardMaterial, RepeatWrapping } from "three";
-import type { Texture, BufferGeometry } from "three";
+import {
+  Mesh,
+  BoxGeometry,
+  Color,
+  MeshStandardMaterial,
+  RepeatWrapping,
+  SphereGeometry,
+} from "three";
+import type { Material, Texture, BufferGeometry } from "three";
 import { useFrame } from "@react-three/fiber";
 import { useGameStore } from "../../context/GameContext";
 import { generateLayout, loadLayoutFromURL } from "../../config/cityLayouts";
@@ -652,6 +659,26 @@ function findDeckLocalY(geo: BufferGeometry): number {
 // the vantage centre; `rot` is yaw in radians (keep to 90° steps — the box
 // collider only swaps X/Z extents for those). Each gets a matching solid box
 // collider, so tweak positions freely here without touching collision code.
+// The vent GLBs ship with a light, clean factory finish that reads as bare
+// white boxes under the rooftop key/fill lights — the brightest surfaces in
+// the player's immediate view. Grime them toward a dark gunmetal that sits in
+// the night palette. Mutates the shared AssetManager materials (vents are only
+// used on the vantage deck); the userData guard keeps repeat calls idempotent.
+const VENT_GRIME_TINT = new Color("#2a2e36");
+function grimeVentMaterial(matOrArr: Material | Material[] | undefined): void {
+  if (!matOrArr) return;
+  const mats = Array.isArray(matOrArr) ? matOrArr : [matOrArr];
+  for (const m of mats) {
+    if (!(m instanceof MeshStandardMaterial) || m.userData.ventGrimed) continue;
+    m.userData.ventGrimed = true;
+    m.color.multiplyScalar(0.45).lerp(VENT_GRIME_TINT, 0.3);
+    m.roughness = Math.max(m.roughness, 0.85);
+    m.metalness = Math.min(m.metalness, 0.35);
+    m.envMapIntensity = 0.2;
+    m.needsUpdate = true;
+  }
+}
+
 const VENT_PLACEMENTS: { key: string; dx: number; dz: number; rot: number }[] =
   [
     // Tall piped vents — left side
@@ -678,6 +705,7 @@ function FiniteCityVantage({
   visibility: { buildings: boolean };
 }) {
   const v = layout.vantage;
+  const beaconMatRef = useRef<MeshStandardMaterial | null>(null);
 
   // Visible platform: the Blender-authored rooftop cap GLB, sitting on a plain
   // dark shaft that fills down to street level. The GLB is the rooftop the
@@ -723,14 +751,59 @@ function FiniteCityVantage({
     // y=0, so we drop it on the deck surface. Geometry/materials are shared
     // (AssetManager-owned), so the dispose effect leaves them alone.
     const deckY = roofY + (findDeckLocalY(capGeo) - bb.min.y);
+    let tallVentTop: { x: number; y: number; z: number } | null = null;
     for (const p of VENT_PLACEMENTS) {
       const geo = assets.getModel(p.key);
       if (!geo) continue;
       const mat = assets.getMaterial(`__embedded_${p.key}`);
+      grimeVentMaterial(mat);
       const m = new Mesh(geo, mat);
       m.position.set(x + p.dx, deckY, z + p.dz);
       m.rotation.y = p.rot;
       out.push(m);
+      // Remember the tip of the tall vent stack for the aircraft beacon. The
+      // topmost VERTEX (the antenna tip), not the bbox top-center — the mast
+      // is off-center, so a bbox placement leaves the beacon floating in air.
+      if (p.key === "vent_01" && !tallVentTop) {
+        const pos = geo.attributes.position;
+        let topY = -Infinity;
+        let tipX = 0;
+        let tipZ = 0;
+        for (let i = 0; i < pos.count; i++) {
+          const py = pos.getY(i);
+          if (py > topY) {
+            topY = py;
+            tipX = pos.getX(i);
+            tipZ = pos.getZ(i);
+          }
+        }
+        const cos = Math.cos(p.rot);
+        const sin = Math.sin(p.rot);
+        tallVentTop = {
+          x: x + p.dx + tipX * cos + tipZ * sin,
+          y: deckY + topY,
+          z: z + p.dz - tipX * sin + tipZ * cos,
+        };
+      }
+    }
+
+    // Red aircraft beacon on the tall vent stack — a small emissive sphere
+    // whose blink is driven by the useFrame below. The only animated light on
+    // the deck; grounds the rooftop against the static skyline.
+    if (tallVentTop) {
+      const beaconMat = new MeshStandardMaterial({
+        color: "#1a0505",
+        roughness: 0.6,
+        emissive: "#ff2a1a",
+        emissiveIntensity: 0.4,
+      });
+      const beaconGeo = new SphereGeometry(0.22, 12, 8);
+      beaconGeo.userData.owned = true;
+      beaconMat.userData.owned = true;
+      const beacon = new Mesh(beaconGeo, beaconMat);
+      beacon.position.set(tallVentTop.x, tallVentTop.y + 0.16, tallVentTop.z);
+      out.push(beacon);
+      beaconMatRef.current = beaconMat;
     }
 
     return out;
@@ -748,6 +821,17 @@ function FiniteCityVantage({
       }
     };
   }, [meshes]);
+
+  // Aircraft-beacon blink: a double flash every ~2.4 s (bright pops that bloom,
+  // dim ember in between) rather than a sine pulse, so it reads as a warning
+  // strobe and not a fading light.
+  useFrame(({ clock }) => {
+    const mat = beaconMatRef.current;
+    if (!mat) return;
+    const t = clock.elapsedTime % 2.4;
+    const on = t < 0.12 || (t >= 0.3 && t < 0.42);
+    mat.emissiveIntensity = on ? 6 : 0.4;
+  });
 
   // Rapier static colliders for the vantage (the player's kinematic capsule is
   // swept against these by the character controller). The rooftop GLB is just

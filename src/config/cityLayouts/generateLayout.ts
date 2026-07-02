@@ -508,7 +508,10 @@ export function generateLayout(
     ? {
         x: vantage.x,
         z: vantage.z,
-        rotationY: Math.PI,
+        // Face the dense downtown quarter (+X/+Z of the vantage) so the first
+        // frame shows the signage-heavy skyline — the "06" tower, the lit
+        // mid-rise cluster — instead of the dark tower backsides (was π).
+        rotationY: Math.PI * 1.25,
         y: VANTAGE_ROOF_Y + HUMAN_EYE_HEIGHT_UNITS,
       }
     : {

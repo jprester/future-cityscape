@@ -65,15 +65,25 @@ await page.waitForTimeout(5000);
 // behind them. (We can't read the WebGL canvas via toDataURL — R3F doesn't
 // preserve the drawing buffer — and an element screenshot stalls on the
 // never-stable animating canvas, so we hide the overlay + full-page capture.)
+// React re-renders (e.g. the pointer-lock rejection updating state) can wipe
+// the inline display:none and bring the 55%-black blocker back before the
+// capture — which used to make screenshots randomly come out dark. Keep
+// re-hiding on an interval so any re-rendered overlay is hidden again within
+// 100 ms, then give it a beat to settle before capturing.
 await page.evaluate(() => {
-  for (const el of document.querySelectorAll("body *")) {
-    const s = getComputedStyle(el);
-    const z = parseInt(s.zIndex, 10);
-    if (s.position === "fixed" && Number.isFinite(z) && z >= 50) {
-      el.style.display = "none";
+  const hide = () => {
+    for (const el of document.querySelectorAll("body *")) {
+      const s = getComputedStyle(el);
+      const z = parseInt(s.zIndex, 10);
+      if (s.position === "fixed" && Number.isFinite(z) && z >= 50) {
+        el.style.display = "none";
+      }
     }
-  }
+  };
+  hide();
+  setInterval(hide, 100);
 });
+await page.waitForTimeout(500);
 
 // Report console/page errors before capturing, so a failed WebGL context (etc.)
 // is visible even if the screenshot then comes out black.
