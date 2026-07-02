@@ -22,8 +22,8 @@ export type BuildingVariant = {
   /** Default rotation offset in radians applied to every instance of this model */
   rotation?: { x?: number; y?: number; z?: number };
   /**
-   * Footprint in city-block SLOTS (a block is a 4×4 slot grid, each slot =
-   * CITY_BLOCK_SIZE/4 = 32 u). `w` runs along X, `d` along Z, both at the
+   * Footprint in city-block SLOTS (a block is an 8×8 slot grid, each slot =
+   * CITY_BLOCK_SIZE/8 = 16 u). `w` runs along X, `d` along Z, both at the
    * model's default (0°) rotation. Used by the residential slot-packing placer
    * in generateLayout.ts to reserve space so buildings never overlap. Sized as
    * ceil(naturalDimension / slot) from the GLB's measured bounding box, so the
@@ -59,19 +59,20 @@ export type BuildingSeries = {
 // that prefix when adding variants.
 
 // ── Residential ─────────────────────────────────────────────────────────────
-// The 2026 "cyberpunk residential" set — 8 GLB homes that vary in size and are
-// mostly SMALLER than a quarter block, so residential blocks are packed with a
-// footprint slot system (see generateLayout.ts `packResidentialBlock`) instead
-// of the old fixed 2×2-per-block grid. Each variant declares its `footprint` in
-// 4×4 block slots (slot = 32 u), sized ceil(naturalDim / 32) from the GLB's
-// measured bounding box (W×D, height in comments). These replaced the earlier
-// `2026-residential-building-*` models (still on disk, now unreferenced).
+// The 2026 "cyberpunk residential" set — 8 GLB homes at human-reference scale
+// (~12–43 u wide, ~30–90 u tall), i.e. small relative to the 128 u block. So
+// residential blocks are packed with a footprint slot system (see
+// generateLayout.ts `packResidentialBlock`) that drops MANY of them per block
+// instead of the old fixed 2×2-per-block grid. Each variant declares its
+// `footprint` in 8×8 block slots (slot = 16 u), sized ceil(naturalDim / 16)
+// from the GLB's measured bounding box (W×D, height in comments). These replaced
+// the earlier `2026-residential-building-*` models (still on disk, unreferenced).
 export const RESIDENTIAL_SERIES: BuildingSeries = {
   id: "residential",
   ads: ["ads_s_01_01", "ads_s_01_02"],
   variants: [
     {
-      // W≈85  D≈52  H≈108 — wide mid-rise
+      // W≈35  D≈21  H≈44 — wide low-rise
       key: "residential_01",
       weight: 1,
       footprint: { w: 3, d: 2 },
@@ -82,10 +83,10 @@ export const RESIDENTIAL_SERIES: BuildingSeries = {
       },
     },
     {
-      // W≈71  D≈39  H≈131 — broad slab
+      // W≈23  D≈13  H≈43 — compact block
       key: "residential_02",
       weight: 1,
-      footprint: { w: 3, d: 2 },
+      footprint: { w: 2, d: 1 },
       source: {
         format: "glb",
         path: "models/buildings/residential/cyberpunk-residential-building-2.glb",
@@ -93,7 +94,7 @@ export const RESIDENTIAL_SERIES: BuildingSeries = {
       },
     },
     {
-      // W≈56  D≈37  H≈142 — compact tower
+      // W≈26  D≈17  H≈65 — mid-rise block
       key: "residential_03",
       weight: 1,
       footprint: { w: 2, d: 2 },
@@ -104,7 +105,7 @@ export const RESIDENTIAL_SERIES: BuildingSeries = {
       },
     },
     {
-      // W≈41  D≈41  H≈201 — slim high-rise (lots of yard around it)
+      // W≈18  D≈18  H≈89 — slim high-rise (tallest of the set)
       key: "residential_04",
       weight: 1,
       footprint: { w: 2, d: 2 },
@@ -115,7 +116,7 @@ export const RESIDENTIAL_SERIES: BuildingSeries = {
       },
     },
     {
-      // W≈39  D≈27  H≈62 — small low-rise
+      // W≈19  D≈13  H≈30 — small low-rise
       key: "residential_05",
       weight: 1,
       footprint: { w: 2, d: 1 },
@@ -126,10 +127,10 @@ export const RESIDENTIAL_SERIES: BuildingSeries = {
       },
     },
     {
-      // W≈47  D≈24  H≈104 — narrow slab
+      // W≈16  D≈8  H≈35 — very narrow low-rise
       key: "residential_06",
       weight: 1,
-      footprint: { w: 2, d: 1 },
+      footprint: { w: 1, d: 1 },
       source: {
         format: "glb",
         path: "models/buildings/residential/cyberpunk-residential-building-6.glb",
@@ -137,7 +138,7 @@ export const RESIDENTIAL_SERIES: BuildingSeries = {
       },
     },
     {
-      // W≈89  D≈30  H≈95 — long slab block
+      // W≈43  D≈15  H≈46 — long slab block
       key: "residential_07",
       weight: 1,
       footprint: { w: 3, d: 1 },
@@ -148,10 +149,10 @@ export const RESIDENTIAL_SERIES: BuildingSeries = {
       },
     },
     {
-      // W≈37  D≈31  H≈127 — compact slim tower
+      // W≈12  D≈10  H≈42 — tiny slim tower
       key: "residential_08",
       weight: 1,
-      footprint: { w: 2, d: 1 },
+      footprint: { w: 1, d: 1 },
       source: {
         format: "glb",
         path: "models/buildings/residential/cyberpunk-residential-building-8.glb",

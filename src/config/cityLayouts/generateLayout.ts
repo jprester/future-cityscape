@@ -50,12 +50,17 @@ for (const s of [RESIDENTIAL_SERIES, COMMERCIAL_SERIES]) {
 
 // ── Footprint slot grid ──────────────────────────────────────────────────────
 // A city block is divided into a SLOTS×SLOTS grid; each slot is CITY_BLOCK_SIZE/
-// SLOTS units square (128/4 = 32 u). Residential buildings reserve a rectangle
-// of slots (their `footprint`) and are placed at natural size, centred in that
-// rectangle — leftover slots read as yards/alleys/plazas, which is exactly the
-// "60–90 % occupied" look the placement doc calls for.
-const SLOTS = 4;
-const SLOT_SIZE = CITY_BLOCK_SIZE / SLOTS; // 32
+// SLOTS units square (128/8 = 16 u). The residential GLBs are small at human
+// scale (~12–43 u), so an 8×8 grid lets a block hold MANY of them — each
+// building reserves a rectangle of slots (its `footprint`) and is placed at
+// natural size, centred in that rectangle. Leftover slots read as yards / alleys
+// / plazas, giving the "60–90 % occupied" look the placement doc calls for.
+const SLOTS = 8;
+const SLOT_SIZE = CITY_BLOCK_SIZE / SLOTS; // 16
+// A mixed block's old 2×2 grid divides the block into 4 cells of half the block
+// (64 u) = this many slots square. Used to fit-scale a wide residential model
+// that happens to land in such a cell.
+const CELL_SLOTS = CITY_BLOCK_SIZE / 2 / SLOT_SIZE; // 4
 
 // Small deterministic PRNG (mulberry32). The Perlin `noise` field is great for
 // smoothly-varying values but a poor uniform stream for the packer's discrete
@@ -538,12 +543,14 @@ export function generateLayout(
 
 // ── Residential footprint packing ────────────────────────────────────────────
 //
-// Fill a residential block's SLOTS×SLOTS grid with variable-footprint buildings
-// (2×1 … 3×2 slots) until it reaches a per-block target occupancy (~65–90 %),
-// leaving the remaining slots as gaps (yards / alleys / plazas). Each building
-// is placed at natural size, centred in its reserved slot rectangle, so they
-// never overlap. Rotation is one of 0/90/180/270°; 90/270 swap the footprint's
-// W/D so slabs appear in both orientations. Deterministic per (block, seed).
+// Fill a residential block's 8×8 slot grid with variable-footprint buildings
+// (1×1 … 3×2 slots) until it reaches a per-block target occupancy (~60–80 %),
+// leaving the remaining slots as gaps (yards / alleys / plazas). With slots at
+// 16 u and the small residential GLBs, a block ends up holding ~15–20 buildings.
+// Each building is placed at natural size, centred in its reserved slot
+// rectangle, so they never overlap. Rotation is one of 0/90/180/270°; 90/270
+// swap the footprint's W/D so slabs appear in both orientations. Deterministic
+// per (block, seed).
 const RESIDENTIAL_ROTATIONS = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
 
 function packResidentialBlock(
@@ -564,14 +571,15 @@ function packResidentialBlock(
   const occupied = new Array<boolean>(SLOTS * SLOTS).fill(false);
   const at = (sx: number, sz: number) => sz * SLOTS + sx;
 
-  // Target filled-slot count (~65–90 % of the 16 slots).
-  const targetFilled = Math.round((0.65 + rng() * 0.25) * SLOTS * SLOTS);
+  // Target filled-slot count (~60–80 % of the 64 slots).
+  const targetFilled = Math.round((0.6 + rng() * 0.2) * SLOTS * SLOTS);
   let filled = 0;
 
   // Bounded attempts: each iteration tries one random variant + orientation and
   // places it in a random free spot that fits, or gives up on that single try
-  // (a later, smaller footprint may still slot into the leftover space).
-  const MAX_ATTEMPTS = 40;
+  // (a later, smaller footprint may still slot into the leftover space). Scaled
+  // to the 64-slot grid so the packer reliably reaches the target occupancy.
+  const MAX_ATTEMPTS = 200;
   for (
     let attempt = 0;
     attempt < MAX_ATTEMPTS && filled < targetFilled;
@@ -670,7 +678,9 @@ function placeSmallBuildings(
       // neighbour. Models without a footprint (all commercial) get fit = 1, so
       // their placement is unchanged.
       const fp = FOOTPRINTS.get(type);
-      const fit = fp ? Math.min(1, 2 / fp.w, 2 / fp.d) : 1;
+      const fit = fp
+        ? Math.min(1, CELL_SLOTS / fp.w, CELL_SLOTS / fp.d)
+        : 1;
 
       // Every small building is a GLB with embedded materials. A light per-
       // instance vertical scale (`scale`) adds height variety across the block.

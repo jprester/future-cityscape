@@ -50,11 +50,16 @@ const MODELS_WITH_EMBEDDED_MATERIALS = getEmbeddedMaterialKeys();
 // Per-model default rotation offsets (e.g. to correct orientation from Blender)
 const MODEL_ROTATIONS = getModelRotations();
 
-// Max instances per (model, material) combination. Headroom above the busiest
-// key: the residential footprint packer favours small (2×1) footprints to fill
-// leftover slots, so those variants can top ~160 instances across the whole
-// grid — anything over this cap is silently dropped (buildings would vanish).
-const MAX_INSTANCES_PER_COMBO = 256;
+// Max VISIBLE instances per (model, material) combination. This bounds the
+// instances written per cull, not the total placed — the culler (Instanced
+// Buildings) sorts visible buildings nearest-first, so if a combo overflows this
+// cap only the farthest (most fog-obscured) copies are dropped. The dense
+// residential footprint packer drops ~15–20 small buildings per block over 8
+// variants, so a single variant can have hundreds visible at once when looking
+// across a residential district; keep generous headroom. Cost is a preallocated
+// matrix/emissive buffer per combo (~19 floats × this × ~50 combos ≈ 2 MB) — the
+// per-frame work still scales with the actual visible count, not this cap.
+const MAX_INSTANCES_PER_COMBO = 512;
 
 // Create a composite key for (model, material) pair
 function getComboKey(modelKey: string, materialKey: string): string {
