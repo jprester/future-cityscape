@@ -11,6 +11,8 @@ import { useGameStore } from "../../context/GameContext";
 import { usePlayerController } from "../../controllers/usePlayerController";
 import type { EnvironmentConfig } from "../../config/environments";
 import type { GameRuntime } from "../../types/game";
+import { generateLayout, loadLayoutFromURL } from "../../config/cityLayouts";
+import { getCityStartupAssets } from "../../assets";
 import { EnhancedEffects, getPreset } from "../effects";
 
 // Dev-only Leva-driven effects wrapper. Excluded from prod (DEV is statically
@@ -49,6 +51,7 @@ export function GameBridge() {
     }) as unknown as GameRuntime;
     gameRef.current = game;
     setEnvironment(game.environment);
+    let cancelled = false;
 
     // DEV-only handle for debugging / headless tooling (e.g. aiming the camera
     // for verification screenshots). Stripped from production builds.
@@ -64,11 +67,43 @@ export function GameBridge() {
     gl.shadowMap.enabled = game.environment.shadows;
     gl.shadowMap.type = PCFSoftShadowMap;
 
-    // In quickstart mode, start loading assets immediately (no terminal boot delay)
+    // Resolve the selected layout before loading so startup only waits for model
+    // variants that can actually appear in this city. Generated layouts still
+    // preload every seed-selected variant because the setup UI can change the
+    // seed while loading. The asset viewer keeps its full-manifest path.
     if (quickstart) {
-      game.load();
+      const loadForLayout = async () => {
+        let layout;
+        let includeSeedVariants = !settings.finiteLayout;
+        if (settings.finiteLayout) {
+          try {
+            layout = await loadLayoutFromURL(
+              `/layouts/${settings.finiteLayout}`,
+            );
+          } catch (error) {
+            console.warn(
+              "Failed to load layout for asset selection, using generated city:",
+              error,
+            );
+            layout = generateLayout(settings.worldSeed);
+            includeSeedVariants = true;
+          }
+        } else {
+          layout = generateLayout(settings.worldSeed);
+        }
+        if (!cancelled) {
+          game.load(getCityStartupAssets(layout, { includeSeedVariants }));
+        }
+      };
+      void loadForLayout();
     }
-  }, [gl, scene, camera, settings, gameRef, terminalRef]);
+
+    return () => {
+      cancelled = true;
+    };
+    // This is intentionally a one-shot initializer. Settings are forwarded by
+    // the effect below; rerunning here could cancel an in-flight layout load.
+  }, [gl, scene, camera, gameRef, terminalRef]);
 
   useEffect(() => {
     if (gameRef.current) {

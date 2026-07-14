@@ -10,6 +10,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "measure:startup": "node scripts/measure-startup.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

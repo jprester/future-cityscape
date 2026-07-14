@@ -58,7 +58,7 @@ class Game {
     Mesh.prototype.raycast = acceleratedRaycast;
   }
 
-  load() {
+  load(assetOptions = {}) {
     // Kick off the Rapier physics world (async WASM load) alongside the assets.
     // The start gate waits for assets (slower), so physics is ready by gameplay;
     // anything applied earlier (spawn, rooftop colliders) is queued until ready.
@@ -67,7 +67,7 @@ class Game {
 
     this.assets = new AssetManager(this, this.terminal);
     this.assets.setPath("assets/");
-    this.assets.load();
+    this.assets.load(assetOptions);
   }
 
   onLoad() {

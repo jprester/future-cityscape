@@ -7,7 +7,6 @@ import {
 } from "three";
 import type { BufferGeometry, Material } from "three";
 import {
-  getAllModelKeys,
   getEmbeddedMaterialKeys,
   getModelRotations,
 } from "../../config/buildingRegistry";
@@ -26,9 +25,6 @@ export type BuildingDescriptor = {
   rotationY: number;
   blockKey: string;
 };
-
-// All building model keys — derived from building registry
-const BUILDING_MODEL_KEYS = getAllModelKeys();
 
 // All building material keys
 const BUILDING_MATERIAL_KEYS = [
@@ -114,7 +110,10 @@ function getEmissiveVariation(
   return v;
 }
 
-export function useBuildingInstances(assets: AssetGetter | null) {
+export function useBuildingInstances(
+  assets: AssetGetter | null,
+  requiredModelKeys: string[],
+) {
   const instancedMeshesRef = useRef<Map<string, InstancedMesh>>(new Map());
   const initializedRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
@@ -130,7 +129,7 @@ export function useBuildingInstances(assets: AssetGetter | null) {
 
     // Create InstancedMesh for each possible (model, material) combination
     // We create them lazily - only combinations that are actually used will have instances
-    for (const modelKey of BUILDING_MODEL_KEYS) {
+    for (const modelKey of requiredModelKeys) {
       const geometry = assets.getModel(modelKey);
       if (!geometry) {
         console.warn(
@@ -210,7 +209,7 @@ export function useBuildingInstances(assets: AssetGetter | null) {
       initializedRef.current = false;
       setIsReady(false);
     };
-  }, [assets, assets?.loaded]);
+  }, [assets, assets?.loaded, requiredModelKeys]);
 
   // Update all instances based on current building descriptors
   const updateInstances = useCallback((buildings: BuildingDescriptor[]) => {

@@ -164,9 +164,9 @@ const CITY_TEMPLATE = `
 .   r   r   m   S12 S05 c   c   c   c   r   r   m   m   r   r   .
 .   r   r   m   c   r   r   c   X   c   c   S06 m   m   r   r   .
 .   r   r   m   c   S08 c   r   c   c   S12   c   T07 m   r   r   .
-.   r   r   m   T08 c   r   c   c   r   c   S16 m   m   r   r   .
+.   r   r   m   T08 c   r   c   c   r   c   S14 m   m   r   r   .
 .   r   r   m   c   r c   c   S11 c   S10 m   m   m   r   r   .
-.   r   r   m   T09 c   S17   T10 c   c   T11 m   T12 m   r   r   .
+.   r   r   m   T09 c   S15   T10 c   c   T11 m   T12 m   r   r   .
 .   r   r   c   c   r   c   c   r   S09 c   c   c   c   r   r   .
 .   r   r   r   r   r   r   r   r   r   r   r   r   r   r   r   .
 .   r   r   r   r   r   r   r   r   r   r   r   r   r   r   r   .

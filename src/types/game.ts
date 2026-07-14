@@ -9,6 +9,7 @@ import type {
   Texture,
 } from "three";
 import type { EmissiveMultipliers } from "../assets/types";
+import type { AssetLoadOptions } from "../assets/AssetManager";
 import type { PlayerController } from "../controllers/usePlayerController";
 import type { EnvironmentConfig } from "../config/environments";
 import type {
@@ -160,5 +161,5 @@ export type GameRuntime = {
   updatePlayer: (delta: number) => void;
   setSettings: (settings: Partial<RuntimeSettings>) => void;
   setTerminal?: (terminal: TerminalApi | null) => void;
-  load?: () => void;
+  load?: (options?: AssetLoadOptions) => void;
 };

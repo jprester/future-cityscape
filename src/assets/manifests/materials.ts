@@ -152,7 +152,7 @@ export function createMaterialFactories(): MaterialFactoryMap {
       });
   }
 
-  // Small ads / neon signs — one billboard-style material per PNG. The PNGs
+  // Small ads / neon signs — one billboard-style material per WebP. The images
   // are alpha-cut posters with neon foreground on transparent (or near-
   // transparent) backgrounds, so we want:
   //   • transparent: true + alphaTest      — discard transparent pixels

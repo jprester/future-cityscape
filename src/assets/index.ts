@@ -4,7 +4,9 @@ export {
   LegacyAssetManager,
   createAssetManager,
 } from "./AssetManager";
-export type { AssetManagerConfig } from "./AssetManager";
+export type { AssetManagerConfig, AssetLoadOptions } from "./AssetManager";
+export { getCityStartupAssets } from "./startupAssets";
+export type { StartupAssetSelection } from "./startupAssets";
 
 // Types
 export type {

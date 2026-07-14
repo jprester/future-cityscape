@@ -146,6 +146,15 @@ export type AssetManagerConfig = {
   onLoad?: () => void;
 };
 
+export type AssetLoadOptions = {
+  /** Omit to load the complete texture manifest (used by the asset viewer). */
+  textureKeys?: Iterable<string>;
+  /** Omit to load the complete model manifest (used by the asset viewer). */
+  modelKeys?: Iterable<string>;
+  /** Omit to initialize the complete material-factory catalog. */
+  materialKeys?: Iterable<string>;
+};
+
 /**
  * Refactored AssetManager with manifest-based loading
  * Supports OBJ, GLB/GLTF formats and lazy material creation
@@ -172,6 +181,7 @@ export class AssetManager {
   private textureManifest: TextureManifest;
   private modelManifest: ModelManifest;
   private materialFactories: MaterialFactoryMap;
+  private materialSelection?: Set<string>;
 
   // Loading state
   private isLoaded = false;
@@ -227,11 +237,28 @@ export class AssetManager {
   /**
    * Load all assets defined in manifests
    */
-  load(): void {
-    console.log("AssetManager: Loading assets");
+  load(options: AssetLoadOptions = {}): void {
+    const textureKeys = options.textureKeys
+      ? new Set(options.textureKeys)
+      : undefined;
+    const modelKeys = options.modelKeys ? new Set(options.modelKeys) : undefined;
+    this.materialSelection = options.materialKeys
+      ? new Set(options.materialKeys)
+      : undefined;
 
-    this.loadTextures();
-    this.loadModels();
+    console.log(
+      `AssetManager: Loading ${textureKeys?.size ?? "all"} textures and ` +
+        `${modelKeys?.size ?? "all"} models; initializing ` +
+        `${this.materialSelection?.size ?? "all"} materials`,
+    );
+
+    this.loadTextures(textureKeys);
+    this.loadModels(modelKeys);
+    this.warnUnknownSelectionKeys(
+      "material",
+      this.materialSelection,
+      this.materialFactories,
+    );
   }
 
   /**
@@ -271,10 +298,12 @@ export class AssetManager {
   // Texture Loading
   // ===========================================================================
 
-  private loadTextures(): void {
+  private loadTextures(selectedKeys?: Set<string>): void {
     for (const [key, entry] of Object.entries(this.textureManifest)) {
+      if (selectedKeys && !selectedKeys.has(key)) continue;
       this.loadTexture(key, entry);
     }
+    this.warnUnknownSelectionKeys("texture", selectedKeys, this.textureManifest);
   }
 
   private loadTexture(key: string, entry: TextureManifestEntry): void {
@@ -301,14 +330,29 @@ export class AssetManager {
   // Model Loading
   // ===========================================================================
 
-  private loadModels(): void {
+  private loadModels(selectedKeys?: Set<string>): void {
     for (const [key, entry] of Object.entries(this.modelManifest)) {
+      if (selectedKeys && !selectedKeys.has(key)) continue;
       if ("type" in entry && entry.format === "geometry") {
         // Procedural geometry
         this.loadProceduralGeometry(key, entry as ProceduralGeometryEntry);
       } else {
         // File-based model
         this.loadModelFromFile(key, entry as ModelManifestEntry);
+      }
+    }
+    this.warnUnknownSelectionKeys("model", selectedKeys, this.modelManifest);
+  }
+
+  private warnUnknownSelectionKeys(
+    kind: "texture" | "model" | "material",
+    selectedKeys: Set<string> | undefined,
+    manifest: TextureManifest | ModelManifest | MaterialFactoryMap,
+  ): void {
+    if (!selectedKeys || !import.meta.env.DEV) return;
+    for (const key of selectedKeys) {
+      if (!(key in manifest)) {
+        console.warn(`AssetManager: Unknown ${kind} key requested: ${key}`);
       }
     }
   }
@@ -650,6 +694,7 @@ export class AssetManager {
   private initializeMaterials(): void {
     // Materials are created after textures are loaded
     for (const [key, factory] of Object.entries(this.materialFactories)) {
+      if (this.materialSelection && !this.materialSelection.has(key)) continue;
       const material = factory(
         (texKey) => this.textures.get(texKey),
         this.materialContext,
@@ -850,8 +895,8 @@ export class LegacyAssetManager {
     this.manager.setPath(path);
   }
 
-  load(): void {
-    this.manager.load();
+  load(options?: AssetLoadOptions): void {
+    this.manager.load(options);
   }
 
   getTexture(key: string) {

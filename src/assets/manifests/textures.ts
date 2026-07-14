@@ -119,7 +119,7 @@ export function createTextureManifest(anisotropy: number): TextureManifest {
     manifest[key] = { path: `textures/ads/${key}.jpg` };
   }
 
-  // Small ads / neon signs — PNGs with (mostly) transparent backgrounds.
+  // Small ads / neon signs — size-capped WebPs with transparent backgrounds.
   // sRGB color space so the colors render the same as the source art.
   // Add new files by registering them in src/config/smallAds.ts.
   for (const ad of SMALL_ADS_META) {
