@@ -145,6 +145,12 @@ export function createMaterialFactories(): MaterialFactoryMap {
 
     factories[adMatKey(ad.id, "billboard")] = (getTexture) =>
       new MeshPhongMaterial({
+        // The panel itself must stay black: with MeshPhong's default light
+        // base, dark texture pixels turn into a flat gray rectangle. The
+        // emissive map is the LED content and should be the only visible light.
+        color: 0x000000,
+        specular: 0x000000,
+        shininess: 0,
         emissive: 0xffffff,
         emissiveMap: getTexture(texKey),
         emissiveIntensity: 0.7, // Overwritten by BASE_EMISSIVE_INTENSITIES × preset

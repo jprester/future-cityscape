@@ -132,8 +132,8 @@ export type EmissiveMultipliers = {
  */
 // Build the ad emissive-intensity rows from ADS_META so adding a new ad
 // only requires editing src/config/ads.ts.
-//   • holo      base 0.7 — slightly brighter to compensate for opacity
-//   • billboard base 0.6 — lower since the image is fully opaque
+//   • holo      base 0.95 — brighter to compensate for additive transparency
+//   • billboard base 0.85 — vivid, while the black base prevents panel washout
 function buildAdEmissiveEntries(): Record<
   string,
   { category: keyof EmissiveMultipliers; base: number }
@@ -143,8 +143,8 @@ function buildAdEmissiveEntries(): Record<
     { category: keyof EmissiveMultipliers; base: number }
   > = {};
   for (const ad of ADS_META) {
-    entries[adMatKey(ad.id, "holo")] = { category: "ads", base: 0.7 };
-    entries[adMatKey(ad.id, "billboard")] = { category: "ads", base: 0.6 };
+    entries[adMatKey(ad.id, "holo")] = { category: "ads", base: 0.95 };
+    entries[adMatKey(ad.id, "billboard")] = { category: "ads", base: 0.85 };
   }
   // Small ads / neon signs — same category as billboards, brighter still
   // since the alpha-cut around the sign means less surface area is glowing.

@@ -110,13 +110,16 @@ export function createTextureManifest(anisotropy: number): TextureManifest {
     };
   }
 
-  // Ad textures — high-res posters at native aspect ratio. Each image is
+  // Ad textures — size-capped WebPs at native aspect ratio. Each image is
   // loaded once and reused by every style variant (holo / billboard / …).
-  // Add a new one by dropping ad_NN.jpg into textures/ads/ and registering
-  // the metadata in src/config/ads.ts — no edit here required.
+  // sRGB keeps authored colors consistent before emissive bloom is applied.
+  // Add new files by registering them in src/config/ads.ts.
   for (const ad of ADS_META) {
     const key = adTextureKey(ad.id);
-    manifest[key] = { path: `textures/ads/${key}.jpg` };
+    manifest[key] = {
+      path: `textures/ads-v2/${ad.file}`,
+      options: { colorSpace: SRGBColorSpace, anisotropy },
+    };
   }
 
   // Small ads / neon signs — size-capped WebPs with transparent backgrounds.
