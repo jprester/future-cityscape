@@ -5,6 +5,7 @@ import {
   Color,
   AdditiveBlending,
   DoubleSide,
+  Vector2,
 } from "three";
 import type { Texture, Material } from "three";
 import type { MaterialContext } from "../types";
@@ -14,6 +15,10 @@ import {
   smallAdMatKey,
   smallAdTextureKey,
 } from "../../config/smallAds";
+import {
+  COMMERCIAL_ATLAS_MATERIAL_KEY,
+  COMMERCIAL_ATLAS_TEXTURE_KEYS,
+} from "../../config/commercialBuildingKit";
 
 type GetTexture = (key: string) => Texture | undefined;
 
@@ -97,6 +102,23 @@ export function createMaterialFactories(): MaterialFactoryMap {
       emissiveIntensity: ctx.windowLightsEnabled ? 2.0 : 0, // Legacy: overwritten by preset
       bumpMap: getTexture("mega_building_01"),
       bumpScale: 10,
+    });
+
+  // Commercial kit v1 — three geometry-only GLBs share these four maps. This
+  // keeps the atlas in GPU memory once instead of embedding it in every model.
+  factories[COMMERCIAL_ATLAS_MATERIAL_KEY] = (getTexture, ctx) =>
+    new MeshStandardMaterial({
+      map: getTexture(COMMERCIAL_ATLAS_TEXTURE_KEYS.diffuse),
+      emissive: 0xffffff,
+      emissiveMap: getTexture(COMMERCIAL_ATLAS_TEXTURE_KEYS.emissive),
+      emissiveIntensity: ctx.windowLightsEnabled ? 1.25 : 0,
+      roughnessMap: getTexture(COMMERCIAL_ATLAS_TEXTURE_KEYS.roughness),
+      roughness: 1,
+      metalness: 0.12,
+      normalMap: getTexture(COMMERCIAL_ATLAS_TEXTURE_KEYS.normal),
+      normalScale: new Vector2(0.5, 0.5),
+      envMap: getTexture("env_night"),
+      envMapIntensity: 0.45,
     });
 
   // Building materials (10 variants with weighted-palette emissive colors)

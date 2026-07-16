@@ -10,6 +10,7 @@ import type {
 import { getEmbeddedEmissiveEntries } from "../config/buildingRegistry";
 import { ADS_META, adMatKey } from "../config/ads";
 import { SMALL_ADS_META, smallAdMatKey } from "../config/smallAds";
+import { COMMERCIAL_ATLAS_MATERIAL_KEY } from "../config/commercialBuildingKit";
 
 // ============================================================================
 // Texture Types
@@ -17,6 +18,8 @@ import { SMALL_ADS_META, smallAdMatKey } from "../config/smallAds";
 
 export type TextureOptions = {
   colorSpace?: ColorSpace;
+  /** glTF UVs use an unflipped image origin; external maps need false. */
+  flipY?: boolean;
   mapping?: Mapping;
   magFilter?: MagnificationTextureFilter;
   wrapS?: Wrapping;
@@ -172,6 +175,7 @@ export const BASE_EMISSIVE_INTENSITIES: Record<
   building_09: { category: "buildings", base: 2.0 },
   building_10: { category: "buildings", base: 2.0 },
   mega_building_01: { category: "buildings", base: 2.0 },
+  [COMMERCIAL_ATLAS_MATERIAL_KEY]: { category: "buildings", base: 1.25 },
   // Embedded GLB models — derived from building registry
   ...getEmbeddedEmissiveEntries(),
   // Neons (storefronts, signs)

@@ -1,4 +1,5 @@
 import type { EmissiveMultipliers, ModelManifestEntry } from "../assets/types";
+import { COMMERCIAL_ATLAS_MATERIAL_KEY } from "./commercialBuildingKit";
 
 // ============================================================================
 // Types
@@ -11,6 +12,8 @@ type BuildingModelSource =
       path: string;
       scale?: number;
       emissiveBase?: number;
+      /** External material used by a geometry-only GLB. Omit for embedded PBR. */
+      materialKey?: string;
     };
 
 export type BuildingVariant = {
@@ -31,6 +34,8 @@ export type BuildingVariant = {
    * yard/alley/plaza gaps. Only residential variants set this today.
    */
   footprint?: { w: number; d: number };
+  /** Keep an asset visible in the viewer without adding it to generated cities. */
+  placeable?: boolean;
 };
 
 export type BuildingSeries = {
@@ -305,6 +310,36 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
         path: "models/buildings/commercial/2026-commercial-building-15.glb",
         emissiveBase: 0.9,
         scale: 0.8,
+      },
+    },
+    {
+      key: "commercial_16",
+      weight: 1,
+      placeable: false,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-wide-slab-01.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+    {
+      key: "commercial_17",
+      weight: 1,
+      placeable: false,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-stepped-tower-01.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+    {
+      key: "commercial_18",
+      weight: 1,
+      placeable: false,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-slim-tower-01.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
       },
     },
   ],
@@ -628,7 +663,7 @@ export function getAllModelKeys(): string[] {
 export function getEmbeddedMaterialKeys(): Set<string> {
   const set = new Set<string>();
   for (const v of getAllVariants()) {
-    if (v.source?.format === "glb") set.add(v.key);
+    if (v.source?.format === "glb" && !v.source.materialKey) set.add(v.key);
   }
   return set;
 }
@@ -643,7 +678,7 @@ export function getEmbeddedEmissiveEntries(): Record<
     { category: keyof EmissiveMultipliers; base: number }
   > = {};
   for (const v of getAllVariants()) {
-    if (v.source?.format === "glb") {
+    if (v.source?.format === "glb" && !v.source.materialKey) {
       entries[`__embedded_${v.key}`] = {
         category: "buildings",
         base: v.source.emissiveBase ?? 2.0,
@@ -666,7 +701,7 @@ export function getBuildingManifestEntries(): Record<
         format: "glb",
         options: {
           computeBVH: true,
-          useEmbeddedMaterial: true,
+          useEmbeddedMaterial: !v.source.materialKey,
           scale: v.source.scale ?? 1,
         },
       };
@@ -678,6 +713,17 @@ export function getBuildingManifestEntries(): Record<
     }
   }
   return entries;
+}
+
+/** External material key per geometry-only model. */
+export function getModelMaterialKeys(): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const variant of getAllVariants()) {
+    if (variant.source?.format === "glb" && variant.source.materialKey) {
+      map.set(variant.key, variant.source.materialKey);
+    }
+  }
+  return map;
 }
 
 /** All ad model keys across all series */

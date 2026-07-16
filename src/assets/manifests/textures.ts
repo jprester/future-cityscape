@@ -7,6 +7,7 @@ import {
 import type { TextureManifest } from "../types";
 import { ADS_META, adTextureKey } from "../../config/ads";
 import { SMALL_ADS_META, smallAdTextureKey } from "../../config/smallAds";
+import { COMMERCIAL_ATLAS_TEXTURE_KEYS } from "../../config/commercialBuildingKit";
 
 /**
  * Texture manifest - defines all textures to be loaded
@@ -91,6 +92,23 @@ export function createTextureManifest(anisotropy: number): TextureManifest {
         anisotropy,
       },
     },
+  };
+
+  manifest[COMMERCIAL_ATLAS_TEXTURE_KEYS.diffuse] = {
+    path: "textures/buildings/commercial-v1/commercial-atlas-v1-diffuse.webp",
+    options: { colorSpace: SRGBColorSpace, flipY: false, anisotropy },
+  };
+  manifest[COMMERCIAL_ATLAS_TEXTURE_KEYS.emissive] = {
+    path: "textures/buildings/commercial-v1/commercial-atlas-v1-emissive.webp",
+    options: { colorSpace: SRGBColorSpace, flipY: false, anisotropy },
+  };
+  manifest[COMMERCIAL_ATLAS_TEXTURE_KEYS.roughness] = {
+    path: "textures/buildings/commercial-v1/commercial-atlas-v1-roughness.webp",
+    options: { flipY: false, anisotropy },
+  };
+  manifest[COMMERCIAL_ATLAS_TEXTURE_KEYS.normal] = {
+    path: "textures/buildings/commercial-v1/commercial-atlas-v1-normal.webp",
+    options: { flipY: false, anisotropy },
   };
 
   // Building textures (10 variants)

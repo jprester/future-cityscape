@@ -313,6 +313,7 @@ export class AssetManager {
     if (entry.options) {
       const opts = entry.options;
       if (opts.colorSpace) texture.colorSpace = opts.colorSpace;
+      if (opts.flipY !== undefined) texture.flipY = opts.flipY;
       if (opts.mapping) texture.mapping = opts.mapping;
       if (opts.magFilter) texture.magFilter = opts.magFilter;
       if (opts.wrapS) texture.wrapS = opts.wrapS;

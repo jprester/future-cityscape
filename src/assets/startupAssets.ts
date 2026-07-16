@@ -2,8 +2,13 @@ import type { FiniteCityLayout } from "../config/cityLayouts";
 import { ADS_META, adMatKey, adTextureKey } from "../config/ads";
 import {
   COMMERCIAL_SERIES,
+  getModelMaterialKeys,
   RESIDENTIAL_SERIES,
 } from "../config/buildingRegistry";
+import {
+  COMMERCIAL_ATLAS_MATERIAL_KEY,
+  COMMERCIAL_ATLAS_TEXTURE_KEY_LIST,
+} from "../config/commercialBuildingKit";
 import {
   SMALL_ADS_META,
   smallAdMatKey,
@@ -54,6 +59,7 @@ const CORE_TEXTURE_KEYS = [
   "spotlight_03",
   "spotlight_04",
 ];
+const MODEL_MATERIAL_KEYS = getModelMaterialKeys();
 
 /**
  * Select the assets required by the playable finite city.
@@ -91,7 +97,9 @@ export function getCityStartupAssets(
     for (const variant of RESIDENTIAL_SERIES.variants) {
       modelKeys.add(variant.key);
     }
-    for (const variant of COMMERCIAL_SERIES.variants) {
+    for (const variant of COMMERCIAL_SERIES.variants.filter(
+      (candidate) => candidate.placeable !== false,
+    )) {
       modelKeys.add(variant.key);
     }
   }
@@ -106,6 +114,17 @@ export function getCityStartupAssets(
     textureKeys.add("storefronts");
     textureKeys.add("storefronts_em");
     materialKeys.add("storefronts");
+  }
+
+  for (const modelKey of modelKeys) {
+    const materialKey = MODEL_MATERIAL_KEYS.get(modelKey);
+    if (!materialKey) continue;
+    materialKeys.add(materialKey);
+    if (materialKey === COMMERCIAL_ATLAS_MATERIAL_KEY) {
+      for (const textureKey of COMMERCIAL_ATLAS_TEXTURE_KEY_LIST) {
+        textureKeys.add(textureKey);
+      }
+    }
   }
 
   for (const key of TRAFFIC_MODEL_KEYS) modelKeys.add(key);

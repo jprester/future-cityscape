@@ -45,6 +45,14 @@ for the scene to populate, hides the start/Leva overlays, and writes:
 .Codex/skills/run-future-cityscape/screenshot.png   (1600x900 PNG)
 ```
 
+For the asset viewer, pass a model key in the URL. The driver waits for the
+catalog and cycles to that exact item before capture:
+
+```bash
+node .agents/skills/run-future-cityscape/driver.mjs \
+  'http://localhost:5173/?mode=assets&asset=commercial_16' /tmp/commercial.png
+```
+
 **Look at the screenshot** — a black frame means the WebGL context failed to
 render (see Troubleshooting). Override URL / output path with args:
 `node .Codex/skills/run-future-cityscape/driver.mjs http://localhost:5173 /tmp/out.png`.

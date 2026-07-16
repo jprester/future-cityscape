@@ -1,0 +1,579 @@
+{
+  "version": 1,
+  "atlas": {
+    "width": 4096,
+    "height": 4096,
+    "padding": 16,
+    "pixelOrigin": "top-left",
+    "uvOrigin": "bottom-left",
+    "diffuse": "commercial-atlas-v1-diffuse.png",
+    "emissive": "commercial-atlas-v1-emissive.png",
+    "roughness": "commercial-atlas-v1-roughness.png",
+    "normal": "commercial-atlas-v1-normal.png"
+  },
+  "regions": {
+    "facade_01": {
+      "type": "facade",
+      "source": "facades/facade-01-diffuse-source.png",
+      "facadeGrid": {
+        "floors": 20,
+        "columnBoundaries": [
+          0.09274194,
+          0.21270161,
+          0.32157258,
+          0.42641129,
+          0.52721774,
+          0.63306452,
+          0.73891129,
+          0.84375,
+          0.94556452
+        ],
+        "rowBoundaries": [
+          0.00531915,
+          0.05385638,
+          0.10305851,
+          0.15159574,
+          0.20013298,
+          0.24867021,
+          0.29787234,
+          0.34640957,
+          0.39428191,
+          0.44281915,
+          0.49135638,
+          0.53922872,
+          0.58710106,
+          0.6356383,
+          0.68351064,
+          0.73138298,
+          0.77859043,
+          0.82646277,
+          0.87300532,
+          0.91954787,
+          0.96609043
+        ]
+      },
+      "pixel": {
+        "x": 16,
+        "y": 16,
+        "width": 992,
+        "height": 1504
+      },
+      "uv": {
+        "u0": 0.00390625,
+        "v0": 0.62890625,
+        "u1": 0.24609375,
+        "v1": 0.99609375
+      }
+    },
+    "facade_02": {
+      "type": "facade",
+      "source": "facades/facade-02-diffuse-source.png",
+      "facadeGrid": {
+        "floors": 22
+      },
+      "pixel": {
+        "x": 1040,
+        "y": 16,
+        "width": 992,
+        "height": 1504
+      },
+      "uv": {
+        "u0": 0.25390625,
+        "v0": 0.62890625,
+        "u1": 0.49609375,
+        "v1": 0.99609375
+      }
+    },
+    "facade_03": {
+      "type": "facade",
+      "source": "facades/facade-03-diffuse-source.png",
+      "facadeGrid": {
+        "floors": 20,
+        "columnBoundaries": [
+          0,
+          0.03931452,
+          0.08870968,
+          0.14415323,
+          0.19758065,
+          0.25504032,
+          0.31048387,
+          0.3578629,
+          0.41431452,
+          0.46975806,
+          0.52923387,
+          0.58064516,
+          0.63608871,
+          0.68044355,
+          0.73487903,
+          0.79637097,
+          0.84375,
+          0.90120968,
+          0.9546371,
+          1
+        ],
+        "rowBoundaries": [
+          0.00465426,
+          0.0525266,
+          0.10106383,
+          0.14893617,
+          0.19680851,
+          0.24468085,
+          0.29321809,
+          0.33976064,
+          0.38763298,
+          0.43484043,
+          0.48204787,
+          0.52925532,
+          0.57646277,
+          0.62367021,
+          0.67087766,
+          0.71808511,
+          0.76529255,
+          0.81316489,
+          0.86037234,
+          0.90757979,
+          0.95545213
+        ]
+      },
+      "pixel": {
+        "x": 2064,
+        "y": 16,
+        "width": 992,
+        "height": 1504
+      },
+      "uv": {
+        "u0": 0.50390625,
+        "v0": 0.62890625,
+        "u1": 0.74609375,
+        "v1": 0.99609375
+      }
+    },
+    "facade_04": {
+      "type": "facade",
+      "source": "facades/facade-04-diffuse-source.png",
+      "facadeGrid": {
+        "floors": 20
+      },
+      "pixel": {
+        "x": 3088,
+        "y": 16,
+        "width": 992,
+        "height": 1504
+      },
+      "uv": {
+        "u0": 0.75390625,
+        "v0": 0.62890625,
+        "u1": 0.99609375,
+        "v1": 0.99609375
+      }
+    },
+    "facade_05": {
+      "type": "facade",
+      "source": "facades/facade-05-diffuse-source.png",
+      "facadeGrid": {
+        "floors": 20
+      },
+      "pixel": {
+        "x": 16,
+        "y": 1552,
+        "width": 992,
+        "height": 1504
+      },
+      "uv": {
+        "u0": 0.00390625,
+        "v0": 0.25390625,
+        "u1": 0.24609375,
+        "v1": 0.62109375
+      }
+    },
+    "facade_06": {
+      "type": "facade",
+      "source": "facades/facade-06-diffuse-source.png",
+      "facadeGrid": {
+        "floors": 22
+      },
+      "pixel": {
+        "x": 1040,
+        "y": 1552,
+        "width": 992,
+        "height": 1504
+      },
+      "uv": {
+        "u0": 0.25390625,
+        "v0": 0.25390625,
+        "u1": 0.49609375,
+        "v1": 0.62109375
+      }
+    },
+    "facade_07": {
+      "type": "facade",
+      "source": "facades/facade-07-diffuse-source.png",
+      "facadeGrid": {
+        "floors": 18
+      },
+      "pixel": {
+        "x": 2064,
+        "y": 1552,
+        "width": 992,
+        "height": 1504
+      },
+      "uv": {
+        "u0": 0.50390625,
+        "v0": 0.25390625,
+        "u1": 0.74609375,
+        "v1": 0.62109375
+      }
+    },
+    "facade_08": {
+      "type": "facade",
+      "source": "facades/facade-08-diffuse-source.png",
+      "facadeGrid": {
+        "floors": 20,
+        "columnBoundaries": [
+          0,
+          0.05342742,
+          0.1078629,
+          0.16229839,
+          0.21370968,
+          0.27016129,
+          0.32459677,
+          0.38104839,
+          0.43245968,
+          0.49294355,
+          0.55141129,
+          0.60685484,
+          0.66229839,
+          0.71774194,
+          0.77217742,
+          0.82560484,
+          0.88104839,
+          0.93548387,
+          0.98891129
+        ],
+        "rowBoundaries": [
+          0.00199468,
+          0.05119681,
+          0.10239362,
+          0.15359043,
+          0.20478723,
+          0.25598404,
+          0.30651596,
+          0.35638298,
+          0.40625,
+          0.45545213,
+          0.50664894,
+          0.55651596,
+          0.60638298,
+          0.65625,
+          0.70545213,
+          0.75531915,
+          0.80585106,
+          0.85571809,
+          0.90492021,
+          0.95279255,
+          0.99867021
+        ]
+      },
+      "pixel": {
+        "x": 3088,
+        "y": 1552,
+        "width": 992,
+        "height": 1504
+      },
+      "uv": {
+        "u0": 0.75390625,
+        "v0": 0.25390625,
+        "u1": 0.99609375,
+        "v1": 0.62109375
+      }
+    },
+    "roof_dark_metal": {
+      "type": "roof",
+      "source": "mechanical/roof-dark-metal-source.png",
+      "pixel": {
+        "x": 16,
+        "y": 3088,
+        "width": 992,
+        "height": 992
+      },
+      "uv": {
+        "u0": 0.00390625,
+        "v0": 0.00390625,
+        "u1": 0.24609375,
+        "v1": 0.24609375
+      }
+    },
+    "roof_weathered_concrete": {
+      "type": "roof",
+      "source": "mechanical/roof-weathered-concrete-source.png",
+      "pixel": {
+        "x": 1040,
+        "y": 3088,
+        "width": 992,
+        "height": 992
+      },
+      "uv": {
+        "u0": 0.25390625,
+        "v0": 0.00390625,
+        "u1": 0.49609375,
+        "v1": 0.24609375
+      }
+    },
+    "hvac_fan_array": {
+      "type": "mechanical",
+      "source": "mechanical/hvac-fan-array-source.png",
+      "pixel": {
+        "x": 2064,
+        "y": 3088,
+        "width": 480,
+        "height": 480
+      },
+      "uv": {
+        "u0": 0.50390625,
+        "v0": 0.12890625,
+        "u1": 0.62109375,
+        "v1": 0.24609375
+      }
+    },
+    "hvac_louver_bank": {
+      "type": "mechanical",
+      "source": "mechanical/hvac-louver-bank-source.png",
+      "pixel": {
+        "x": 2576,
+        "y": 3088,
+        "width": 480,
+        "height": 480
+      },
+      "uv": {
+        "u0": 0.62890625,
+        "v0": 0.12890625,
+        "u1": 0.74609375,
+        "v1": 0.24609375
+      }
+    },
+    "service_wall": {
+      "type": "mechanical",
+      "source": "mechanical/service-wall-source.png",
+      "pixel": {
+        "x": 2064,
+        "y": 3600,
+        "width": 480,
+        "height": 480
+      },
+      "uv": {
+        "u0": 0.50390625,
+        "v0": 0.00390625,
+        "u1": 0.62109375,
+        "v1": 0.12109375
+      }
+    },
+    "mechanical_panels": {
+      "type": "mechanical",
+      "source": "mechanical/mechanical-panels-source.png",
+      "pixel": {
+        "x": 2576,
+        "y": 3600,
+        "width": 480,
+        "height": 480
+      },
+      "uv": {
+        "u0": 0.62890625,
+        "v0": 0.00390625,
+        "u1": 0.74609375,
+        "v1": 0.12109375
+      }
+    },
+    "trim_cyan_sheet": {
+      "type": "trim",
+      "source": "mechanical/trim-cyan-source.png",
+      "pixel": {
+        "x": 3088,
+        "y": 3088,
+        "width": 480,
+        "height": 992
+      },
+      "uv": {
+        "u0": 0.75390625,
+        "v0": 0.00390625,
+        "u1": 0.87109375,
+        "v1": 0.24609375
+      }
+    },
+    "trim_magenta_sheet": {
+      "type": "trim",
+      "source": "mechanical/trim-magenta-source.png",
+      "pixel": {
+        "x": 3600,
+        "y": 3088,
+        "width": 480,
+        "height": 992
+      },
+      "uv": {
+        "u0": 0.87890625,
+        "v0": 0.00390625,
+        "u1": 0.99609375,
+        "v1": 0.24609375
+      }
+    },
+    "roof_metal_tile_a": {
+      "type": "roof-tile",
+      "source": "mechanical/roof-dark-metal-source.png#roof_metal_tile_a",
+      "pixel": {
+        "x": 18.331738437001594,
+        "y": 3408.8006379585327,
+        "width": 330.8006379585327,
+        "height": 314.4688995215311
+      },
+      "uv": {
+        "u0": 0.00447552,
+        "v0": 0.09099865,
+        "u1": 0.0852374,
+        "v1": 0.16777328
+      }
+    },
+    "roof_metal_tile_b": {
+      "type": "roof-tile",
+      "source": "mechanical/roof-dark-metal-source.png#roof_metal_tile_b",
+      "pixel": {
+        "x": 373.54704944178627,
+        "y": 3408.8006379585327,
+        "width": 330.8006379585327,
+        "height": 314.4688995215311
+      },
+      "uv": {
+        "u0": 0.09119801,
+        "v0": 0.09099865,
+        "u1": 0.17195988,
+        "v1": 0.16777328
+      }
+    },
+    "roof_concrete_tile_a": {
+      "type": "roof-tile",
+      "source": "mechanical/roof-weathered-concrete-source.png#roof_concrete_tile_a",
+      "pixel": {
+        "x": 1042.3317384370016,
+        "y": 3090.3317384370016,
+        "width": 322.6347687400319,
+        "height": 281.8054226475279
+      },
+      "uv": {
+        "u0": 0.25447552,
+        "v0": 0.17672433,
+        "u1": 0.33324378,
+        "v1": 0.24552448
+      }
+    },
+    "roof_concrete_tile_b": {
+      "type": "roof-tile",
+      "source": "mechanical/roof-weathered-concrete-source.png#roof_concrete_tile_b",
+      "pixel": {
+        "x": 1385.298245614035,
+        "y": 3090.3317384370016,
+        "width": 322.6347687400319,
+        "height": 281.8054226475279
+      },
+      "uv": {
+        "u0": 0.33820758,
+        "v0": 0.17672433,
+        "u1": 0.41697583,
+        "v1": 0.24552448
+      }
+    },
+    "hvac_fan_quad": {
+      "type": "mechanical-module",
+      "source": "mechanical/hvac-fan-array-source.png#hvac_fan_quad",
+      "pixel": {
+        "x": 2056.1244019138758,
+        "y": 3078.8995215311006,
+        "width": 147.06858054226475,
+        "height": 145.02711323763955
+      },
+      "uv": {
+        "u0": 0.5019835,
+        "v0": 0.21290854,
+        "u1": 0.53788891,
+        "v1": 0.24831555
+      }
+    },
+    "hvac_louver_wide": {
+      "type": "mechanical-module",
+      "source": "mechanical/hvac-louver-bank-source.png#hvac_louver_wide",
+      "pixel": {
+        "x": 2584.4561403508774,
+        "y": 3084.207336523126,
+        "width": 461.45454545454544,
+        "height": 118.48803827751196
+      },
+      "uv": {
+        "u0": 0.63097074,
+        "v0": 0.21809195,
+        "u1": 0.74363054,
+        "v1": 0.24701969
+      }
+    },
+    "hvac_access_panel": {
+      "type": "mechanical-module",
+      "source": "mechanical/hvac-louver-bank-source.png#hvac_access_panel",
+      "pixel": {
+        "x": 2590.5805422647527,
+        "y": 3359.805422647528,
+        "width": 318.5518341307815,
+        "height": 171.56618819776713
+      },
+      "uv": {
+        "u0": 0.63246595,
+        "v0": 0.13784873,
+        "u1": 0.7102374,
+        "v1": 0.179735
+      }
+    },
+    "service_wall_clean": {
+      "type": "mechanical-module",
+      "source": "mechanical/service-wall-source.png#service_wall_clean",
+      "pixel": {
+        "x": 2172.488038277512,
+        "y": 3596.207336523126,
+        "width": 281.8054226475279,
+        "height": 130.73684210526315
+      },
+      "uv": {
+        "u0": 0.53039259,
+        "v0": 0.09010152,
+        "u1": 0.59919274,
+        "v1": 0.12201969
+      }
+    },
+    "beacon_rod_dark": {
+      "type": "metal-swatch",
+      "source": "generated:#151a1f",
+      "pixel": {
+        "x": 4000,
+        "y": 4052,
+        "width": 28,
+        "height": 28
+      },
+      "uv": {
+        "u0": 0.9765625,
+        "v0": 0.00390625,
+        "u1": 0.98339844,
+        "v1": 0.01074219
+      }
+    },
+    "beacon_red": {
+      "type": "emissive",
+      "source": "generated:#ff1018",
+      "pixel": {
+        "x": 4048,
+        "y": 4052,
+        "width": 28,
+        "height": 28
+      },
+      "uv": {
+        "u0": 0.98828125,
+        "v0": 0.00390625,
+        "u1": 0.99511719,
+        "v1": 0.01074219
+      }
+    }
+  }
+}

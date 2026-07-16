@@ -1,11 +1,14 @@
 import { useEffect, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Html } from "@react-three/drei";
+import { Bounds, OrbitControls, Html } from "@react-three/drei";
 import { NoToneMapping, SRGBColorSpace } from "three";
 import type { BufferGeometry, Material } from "three";
 import { Game } from "../../classes/Game.js";
 import { useGameStore } from "../../context/GameContext";
-import { getEmbeddedMaterialKeys } from "../../config/buildingRegistry";
+import {
+  getEmbeddedMaterialKeys,
+  getModelMaterialKeys,
+} from "../../config/buildingRegistry";
 import {
   getProceduralAdMaterial,
   tickNeonFlicker,
@@ -18,6 +21,7 @@ import {
 import { COLORS } from "../../constants/colors";
 
 const EMBEDDED = getEmbeddedMaterialKeys();
+const MODEL_MATERIALS = getModelMaterialKeys();
 
 // Shared texture material keys (for OBJ models)
 const SHARED_MATERIALS = [
@@ -61,6 +65,13 @@ function resolveModel(
 
   if (EMBEDDED.has(key)) {
     const material = getMaterial(`__embedded_${key}`);
+    if (!material) return null;
+    return { geometry, material };
+  }
+
+  const sharedMaterialKey = MODEL_MATERIALS.get(key);
+  if (sharedMaterialKey) {
+    const material = getMaterial(sharedMaterialKey);
     if (!material) return null;
     return { geometry, material };
   }
@@ -228,7 +239,9 @@ function SceneContent({
     <>
       {category === "neon" && <NeonFlickerTick />}
       {viewMode === "single" ? (
-        <ItemMesh resolved={current} />
+        <Bounds key={current.item.key} fit clip observe margin={1.25}>
+          <ItemMesh resolved={current} />
+        </Bounds>
       ) : (
         <GalleryView items={resolvedItems} showLabels={showLabels} />
       )}
@@ -268,6 +281,7 @@ export default function AssetViewerScene({
 
       {/* Orbit controls */}
       <OrbitControls
+        makeDefault
         enableDamping
         dampingFactor={0.1}
         maxPolarAngle={Math.PI / 2}

@@ -5,7 +5,8 @@
 // the rooftop), lets the scene render, and screenshots the <canvas>.
 //
 // Usage (dev server must already be running on :5173 — see SKILL.md):
-//   node .claude/skills/run-future-cityscape/driver.mjs [url] [outfile]
+//   node .agents/skills/run-future-cityscape/driver.mjs [url] [outfile]
+// Asset viewer URLs may include `asset=MODEL_KEY`; the driver will cycle to it.
 //
 // Defaults: url=http://localhost:5173  outfile=.claude/skills/run-future-cityscape/screenshot.png
 //
@@ -42,18 +43,42 @@ page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
 console.log(`[driver] navigating to ${url}`);
 await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
 
-// The start button reads "Loading…" until assets finish (launchReady), then
-// "Click to start". Wait for the enabled, ready button — GLB assets are large,
-// so allow a generous timeout.
-console.log("[driver] waiting for assets to load (Click to start)…");
-const startBtn = page.getByRole("button", { name: /click to start/i });
-await startBtn.waitFor({ state: "visible", timeout: 120_000 });
+const parsedUrl = new URL(url);
+const isAssetViewer = parsedUrl.searchParams.get("mode") === "assets";
 
-// requestPointerLock() rejects in headless (no user-gesture lock); that's fine —
-// game.onEnterClick() (init + rooftop spawn) has already run by then. The scene
-// renders and animates regardless of pointer-lock state.
-console.log("[driver] clicking start…");
-await startBtn.click();
+if (isAssetViewer) {
+  console.log("[driver] waiting for asset viewer…");
+  await page
+    .getByRole("button", { name: "Buildings", exact: true })
+    .waitFor({ state: "visible", timeout: 120_000 });
+
+  const targetAsset = parsedUrl.searchParams.get("asset");
+  if (targetAsset) {
+    console.log(`[driver] cycling to ${targetAsset}…`);
+    let found = false;
+    for (let index = 0; index < 200; index += 1) {
+      const target = page.getByText(targetAsset, { exact: true });
+      if (await target.isVisible().catch(() => false)) {
+        found = true;
+        break;
+      }
+      await page.keyboard.press("ArrowRight");
+    }
+    if (!found) throw new Error(`Asset viewer item not found: ${targetAsset}`);
+  }
+} else {
+  // The start button reads "Loading…" until assets finish (launchReady), then
+  // "Click to start". Wait for the enabled, ready button — GLB assets are large,
+  // so allow a generous timeout.
+  console.log("[driver] waiting for assets to load (Click to start)…");
+  const startBtn = page.getByRole("button", { name: /click to start/i });
+  await startBtn.waitFor({ state: "visible", timeout: 120_000 });
+
+  // requestPointerLock() rejects in headless (no user-gesture lock); that's
+  // fine — game.onEnterClick() has already initialized the scene.
+  console.log("[driver] clicking start…");
+  await startBtn.click();
+}
 
 // Let the scene initialize, the rooftop spawn apply, and instanced buildings
 // populate before capturing.
@@ -70,7 +95,7 @@ await page.waitForTimeout(5000);
 // capture — which used to make screenshots randomly come out dark. Keep
 // re-hiding on an interval so any re-rendered overlay is hidden again within
 // 100 ms, then give it a beat to settle before capturing.
-await page.evaluate(() => {
+if (!isAssetViewer) await page.evaluate(() => {
   const hide = () => {
     for (const el of document.querySelectorAll("body *")) {
       const s = getComputedStyle(el);

@@ -1,0 +1,51 @@
+{
+  "name": "commercial-pilot-01",
+  "bounds": {
+    "min": [
+      -24.0,
+      -18.0,
+      0.0
+    ],
+    "max": [
+      24.0,
+      18.0,
+      168.0
+    ],
+    "dimensions": [
+      48.0,
+      36.0,
+      168.0
+    ]
+  },
+  "baseCentered": true,
+  "vertices": 64,
+  "polygons": 48,
+  "triangles": 96,
+  "uvLayers": 1,
+  "materials": 1,
+  "textureMaps": {
+    "diffuse": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-diffuse.png",
+    "emissive": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-emissive.png",
+    "roughness": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-roughness.png",
+    "normal": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-normal.png"
+  },
+  "atlasRegions": [
+    "facade_01",
+    "facade_02",
+    "facade_03",
+    "facade_04",
+    "facade_06",
+    "facade_07",
+    "hvac_fan_array",
+    "hvac_louver_bank",
+    "mechanical_panels",
+    "roof_dark_metal",
+    "roof_weathered_concrete",
+    "service_wall"
+  ],
+  "outputs": {
+    "blend": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/pilot/commercial-pilot-01.blend",
+    "glb": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/pilot/commercial-pilot-01.glb",
+    "preview": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/pilot/commercial-pilot-01-preview.png"
+  }
+}

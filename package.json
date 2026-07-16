@@ -10,6 +10,13 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build:commercial-atlas": "node scripts/build-commercial-atlas.mjs",
+    "build:commercial-pbr": "node scripts/build-commercial-pbr.mjs",
+    "generate:commercial-pilot": "node scripts/generate-commercial-buildings.mjs pilot specs/commercial-pilot-01.json",
+    "generate:commercial-variants": "node scripts/generate-commercial-buildings.mjs production specs/commercial-wide-slab-01.json specs/commercial-stepped-tower-01.json specs/commercial-slim-tower-01.json",
+    "generate:commercial-runtime": "node scripts/generate-commercial-buildings.mjs --geometry-only runtime specs/commercial-wide-slab-01.json specs/commercial-stepped-tower-01.json specs/commercial-slim-tower-01.json",
+    "publish:commercial-runtime": "node scripts/publish-commercial-runtime.mjs",
+    "inspect:commercial-pilot": "node scripts/inspect-glb.mjs art-source/buildings/commercial-v1/pilot/commercial-pilot-01.glb",
     "measure:startup": "node scripts/measure-startup.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

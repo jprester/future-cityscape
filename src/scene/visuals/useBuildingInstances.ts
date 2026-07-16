@@ -8,6 +8,7 @@ import {
 import type { BufferGeometry, Material } from "three";
 import {
   getEmbeddedMaterialKeys,
+  getModelMaterialKeys,
   getModelRotations,
 } from "../../config/buildingRegistry";
 
@@ -42,6 +43,7 @@ const BUILDING_MATERIAL_KEYS = [
 
 // Models that use embedded materials from GLB files — derived from building registry
 const MODELS_WITH_EMBEDDED_MATERIALS = getEmbeddedMaterialKeys();
+const MODEL_MATERIAL_KEYS = getModelMaterialKeys();
 
 // Per-model default rotation offsets (e.g. to correct orientation from Blender)
 const MODEL_ROTATIONS = getModelRotations();
@@ -177,6 +179,29 @@ export function useBuildingInstances(
         continue;
       }
 
+      const sharedMaterialKey = MODEL_MATERIAL_KEYS.get(modelKey);
+      if (sharedMaterialKey) {
+        const material = assets.getMaterial(sharedMaterialKey);
+        if (!material) {
+          console.warn(
+            `useBuildingInstances: shared material ${sharedMaterialKey} for ${modelKey} not found`,
+          );
+          continue;
+        }
+        const comboKey = getComboKey(modelKey, sharedMaterialKey);
+        const instancedMesh = new InstancedMesh(
+          geometry,
+          material,
+          MAX_INSTANCES_PER_COMBO,
+        );
+        instancedMesh.count = 0;
+        instancedMesh.frustumCulled = false;
+        instancedMesh.castShadow = true;
+        instancedMesh.receiveShadow = true;
+        instancedMeshesRef.current.set(comboKey, instancedMesh);
+        continue;
+      }
+
       for (const materialKey of BUILDING_MATERIAL_KEYS) {
         const material = assets.getMaterial(materialKey);
         if (!material) {
@@ -224,7 +249,7 @@ export function useBuildingInstances(
       // For models with embedded materials, remap to use the embedded material key
       const materialKey = MODELS_WITH_EMBEDDED_MATERIALS.has(building.modelKey)
         ? `__embedded_${building.modelKey}`
-        : building.materialKey;
+        : (MODEL_MATERIAL_KEYS.get(building.modelKey) ?? building.materialKey);
       const comboKey = getComboKey(building.modelKey, materialKey);
       let list = buildingsByCombo.get(comboKey);
       if (!list) {

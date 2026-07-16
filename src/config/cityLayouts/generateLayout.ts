@@ -33,7 +33,9 @@ const CELL_SIZE = CITY_BLOCK_SIZE + ROAD_WIDTH;
 // packer (see `packResidentialBlock`). All four categories are GLB with embedded
 // materials, so placed buildings always use their "__embedded_{key}".
 const RESIDENTIAL_KEYS = RESIDENTIAL_SERIES.variants.map((v) => v.key);
-const COMMERCIAL_KEYS = COMMERCIAL_SERIES.variants.map((v) => v.key);
+const COMMERCIAL_KEYS = COMMERCIAL_SERIES.variants
+  .filter((variant) => variant.placeable !== false)
+  .map((variant) => variant.key);
 
 // The residential variant list, kept whole so the packer can read each model's
 // footprint. Every residential variant declares a footprint in block slots.

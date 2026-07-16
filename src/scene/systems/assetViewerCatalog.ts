@@ -1,6 +1,7 @@
 import {
   getAllModelKeys,
   getEmbeddedMaterialKeys,
+  getModelMaterialKeys,
 } from "../../config/buildingRegistry";
 import { ADS_META, adMatKey } from "../../config/ads";
 import { SMALL_ADS_META, smallAdMatKey } from "../../config/smallAds";
@@ -41,6 +42,7 @@ export const VIEWER_CATEGORIES: { id: ViewerCategory; label: string }[] = [
 ];
 
 const EMBEDDED = getEmbeddedMaterialKeys();
+const MODEL_MATERIALS = getModelMaterialKeys();
 
 function getSeriesLabel(key: string): string {
   if (key.startsWith("residential_")) return "Residential";
@@ -55,7 +57,13 @@ function buildItems(category: ViewerCategory): ViewerItem[] {
     case "buildings":
       return getAllModelKeys().map((key) => ({
         key,
-        detail: `${getSeriesLabel(key)} · ${EMBEDDED.has(key) ? "GLB" : "OBJ"}`,
+        detail: `${getSeriesLabel(key)} · ${
+          EMBEDDED.has(key)
+            ? "GLB · embedded PBR"
+            : MODEL_MATERIALS.has(key)
+              ? "GLB · shared PBR"
+              : "OBJ"
+        }`,
         kind: "model",
         aspect: 1,
       }));
