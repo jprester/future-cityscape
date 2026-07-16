@@ -11,7 +11,7 @@ import {
   disposeBoundsTree,
   acceleratedRaycast,
 } from "three-mesh-bvh";
-import { Collider } from "./Collider.js";
+import { PhysicsWorld } from "./PhysicsWorld.js";
 
 class Game {
   constructor(options = {}) {
@@ -51,19 +51,23 @@ class Game {
     this.cityBlockSize = CITY_BLOCK_SIZE;
     this.roadWidth = ROAD_WIDTH;
 
-    // collision
-
+    // Accelerated raycasting (three-mesh-bvh) — kept for any mesh raycasts; the
+    // player's collision now lives in the Rapier PhysicsWorld (see load()).
     BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
     BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
     Mesh.prototype.raycast = acceleratedRaycast;
-
-    this.collider = new Collider();
   }
 
-  load() {
+  load(assetOptions = {}) {
+    // Kick off the Rapier physics world (async WASM load) alongside the assets.
+    // The start gate waits for assets (slower), so physics is ready by gameplay;
+    // anything applied earlier (spawn, rooftop colliders) is queued until ready.
+    this.physics = new PhysicsWorld();
+    this.physics.init().catch((e) => console.error("Physics init failed:", e));
+
     this.assets = new AssetManager(this, this.terminal);
     this.assets.setPath("assets/");
-    this.assets.load();
+    this.assets.load(assetOptions);
   }
 
   onLoad() {

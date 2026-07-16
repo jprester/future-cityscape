@@ -1,17 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Mesh,
-  PlaneGeometry,
-  MeshBasicMaterial,
-  DoubleSide,
+  BoxGeometry,
+  Color,
+  MeshStandardMaterial,
   RepeatWrapping,
+  SphereGeometry,
 } from "three";
-import type { Texture } from "three";
+import type { Material, Texture, BufferGeometry } from "three";
 import { useFrame } from "@react-three/fiber";
 import { useGameStore } from "../../context/GameContext";
 import { generateLayout, loadLayoutFromURL } from "../../config/cityLayouts";
 import { CITY_BLOCK_SIZE, ROAD_WIDTH } from "../../config/world";
-import { unitsToMeters, UNITS_PER_METER } from "../../config/scale";
+import {
+  unitsToMeters,
+  UNITS_PER_METER,
+  HUMAN_EYE_HEIGHT_UNITS,
+} from "../../config/scale";
 import { createPerlin } from "../../utils";
 import type { FiniteCityLayout } from "../../config/cityLayouts";
 import {
@@ -19,13 +24,16 @@ import {
   type BuildingDescriptor,
 } from "../visuals/InstancedBuildings";
 import { CityBlockUpdateableVisuals } from "../visuals/CityBlockUpdateableVisuals";
+import { HorizonSkyline, Starfield } from "../visuals/HorizonSkyline";
+import { FiniteCityTraffic } from "../visuals/FiniteCityTraffic";
+import { StreetGlow } from "../visuals/StreetGlow";
 import type { GameRuntime, UpdateableVisualState } from "../../types/game";
 import {
   FiniteCityWallAds,
   resolveManualWallAds,
   resolveProceduralWallAds,
+  resolveSmallSlotAdsProcedural,
 } from "../wallAds";
-
 
 type GroundLight = {
   x: number;
@@ -83,7 +91,9 @@ export function FiniteCitySystem() {
         floors: Math.round(heightMeters / 3.5),
       });
     }
-    rows.sort((a, b) => (a.heightMeters as number) - (b.heightMeters as number));
+    rows.sort(
+      (a, b) => (a.heightMeters as number) - (b.heightMeters as number),
+    );
     // eslint-disable-next-line no-console
     console.log(`[scale audit] ${UNITS_PER_METER} units = 1 m`);
     // eslint-disable-next-line no-console
@@ -130,9 +140,31 @@ export function FiniteCitySystem() {
 
     // Apply layout spawn position once both game and layout are ready
     if (!spawnAppliedRef.current && layout && game.player) {
-      const { x, z, rotationY } = layout.spawn;
+      const { x, z, rotationY, y, roofModelKey, roofScaleY } = layout.spawn;
+
+      // Resolve the eye-height Y. A rooftop spawn (roofModelKey) needs the
+      // model's bounding box, which is only available once assets are loaded —
+      // so defer the whole spawn until then rather than landing at street level.
+      let eyeY = y;
+      if (eyeY == null && roofModelKey) {
+        if (!game.assets?.loaded) return;
+        const geom = game.assets.getModel(roofModelKey);
+        if (!geom) return;
+        if (!geom.boundingBox) geom.computeBoundingBox();
+        const roofTop = geom.boundingBox?.max.y ?? 0;
+        eyeY = roofTop * (roofScaleY ?? 1) + HUMAN_EYE_HEIGHT_UNITS;
+      }
+
       game.player.body.position.x = x;
       game.player.body.position.z = z;
+      if (eyeY != null) {
+        game.player.body.position.y = eyeY;
+        // For the rooftop vantage, FiniteCityVantage seats the Rapier capsule on
+        // the real deck height once its colliders exist — seating it here at the
+        // layout's roofY (below the deck) would wedge it under the deck. Only
+        // seat here for non-vantage (street) spawns.
+        if (!layout.vantage) game.physics?.setEye({ x, y: eyeY, z });
+      }
       if (game.player.camera_target) {
         game.player.camera_target.rotation.y = rotationY;
       }
@@ -164,16 +196,53 @@ export function FiniteCitySystem() {
       seed = (seed * 16807 + 0) % 2147483647;
       return (seed - 1) / 2147483646;
     };
+    // Steam plumes sit on (a) the big downtown towers/skyscrapers everywhere
+    // and (b) the taller commercial GLB fill (`commercial_`, ~100–220u) — but
+    // the mid-rise plumes are gated to the DOWNTOWN CORE only. Across the
+    // expanded residential outskirts these plumes used to pile into a flat
+    // "fog deck" on the horizon; keeping mid-rise steam inside the core radius
+    // re-introduces street-level steam without bringing the deck back.
+    const core = layout.vantage ?? { x: 0, z: 0 };
+    const CORE_SMOKE_RADIUS = 6 * (CITY_BLOCK_SIZE + ROAD_WIDTH); // ~912u
+    const coreR2 = CORE_SMOKE_RADIUS * CORE_SMOKE_RADIUS;
     for (const b of layout.buildings) {
-      if (seededRandom() < 0.05) {
-        const s = 1 + seededRandom() * 8;
+      // Tall = the 1-per-block skyscrapers/towers (big high plume everywhere);
+      // mid-rise = the taller commercial GLBs (smaller rooftop plume, core only);
+      // residential is low-rise and gets no steam.
+      const isTall =
+        b.modelKey.startsWith("skyscraper_") || b.modelKey.startsWith("tower_");
+      const isMidRise = b.modelKey.startsWith("commercial_");
+
+      // Per-tier plume settings: tall towers get the big high plume; mid-rise
+      // blocks get a smaller, lower plume near their roofline, and only when
+      // they fall inside the downtown core.
+      let chance: number;
+      let plumeY: number;
+      let scaleMax: number;
+      if (isTall) {
+        chance = 0.5;
+        plumeY = 190 * b.scaleY;
+        scaleMax = 8;
+      } else if (isMidRise) {
+        const dx = b.x - core.x;
+        const dz = b.z - core.z;
+        if (dx * dx + dz * dz > coreR2) continue; // outside core → no plume
+        chance = 0.22;
+        plumeY = 120 * b.scaleY;
+        scaleMax = 4;
+      } else {
+        continue; // low-rise residential (s_01) / anything else → no plume
+      }
+
+      if (seededRandom() < chance) {
+        const s = 1 + seededRandom() * scaleMax;
         const sy = s * (1 + seededRandom() * 0.5);
         smokes.push({
           isVisual: true,
           kind: "smoke",
           modelKey: "smoke",
           matKey: smokeMats[Math.floor(seededRandom() * smokeMats.length)],
-          position: { x: b.x, y: 190 * b.scaleY, z: b.z },
+          position: { x: b.x, y: plumeY, z: b.z },
           scale: { x: s, y: sy, z: s },
           rstep: seededRandom() * 7,
         });
@@ -182,7 +251,11 @@ export function FiniteCitySystem() {
     return smokes;
   }, [layout, settings.worldSeed]);
 
-  // Generate spotlight/hologram visual states for industrial buildings (s_03)
+  // Generate searchlight beams. They sit at ROAD CROSSINGS (the gaps between
+  // blocks, which are always empty) at street level, so each beam rises out of
+  // the city canyon into the sky instead of out of a building roof. The beam is
+  // a tall, narrow shaft (non-uniform scale) so it reads against the skyline and
+  // roughly fits the road width; surrounding buildings occlude its lower part.
   const spotlightStates = useMemo(() => {
     if (!layout) return [];
     const spots: UpdateableVisualState[] = [];
@@ -197,41 +270,65 @@ export function FiniteCitySystem() {
       seed = (seed * 16807 + 0) % 2147483647;
       return (seed - 1) / 2147483646;
     };
-    for (const b of layout.buildings) {
-      if (!b.modelKey.startsWith("s_03_")) continue;
-      // ~25% of industrial buildings
-      if (seededRandom() > 0.25) continue;
-      const matKey = spotMats[Math.floor(seededRandom() * spotMats.length)];
-      const s = 10 + seededRandom() * 10;
-      const spot: UpdateableVisualState = {
-        isVisual: true,
-        kind: "spotlight",
-        modelKey: "spotlight",
-        matKey,
-        position: { x: b.x, y: 160 * b.scaleY, z: b.z },
-        scale: { x: s, y: s, z: s },
-        rstep: seededRandom() * 7,
-      };
-      spot.update = () => {
-        spot.rstep = (spot.rstep ?? 0) + 0.01;
-      };
-      spots.push(spot);
+
+    // Road-crossing lattice: block centers sit at x ≡ CITY_BLOCK_SIZE/2 (mod
+    // CELL), so road centers are half a cell further along.
+    const CELL = CITY_BLOCK_SIZE + ROAD_WIDTH;
+    const ROAD_PHASE = CITY_BLOCK_SIZE + ROAD_WIDTH / 2;
+    const { minX, maxX, minZ, maxZ } = layout.bounds;
+    const firstRoad = (v: number) =>
+      Math.ceil((v - ROAD_PHASE) / CELL) * CELL + ROAD_PHASE;
+
+    for (let x = firstRoad(minX); x <= maxX; x += CELL) {
+      for (let z = firstRoad(minZ); z <= maxZ; z += CELL) {
+        // ~12% of road crossings get a beam (denser searchlight field).
+        if (seededRandom() > 0.12) continue;
+        const matKey = spotMats[Math.floor(seededRandom() * spotMats.length)];
+        const w = 7 + seededRandom() * 5; // width scale (≈28–48 u, fuller soft shaft)
+        const h = 14 + seededRandom() * 8; // height scale (≈700–1100 u shaft)
+        const spot: UpdateableVisualState = {
+          isVisual: true,
+          kind: "spotlight",
+          modelKey: "spotlight",
+          matKey,
+          position: { x, y: 0, z }, // base at street level, in the road gap
+          scale: { x: w, y: h, z: w },
+          rstep: seededRandom() * 7,
+        };
+        spot.update = () => {
+          // Drives the searchlight sweep (see CityBlockUpdateableVisuals).
+          // ~0.018 rad/frame → a gentle few-second sweep cycle.
+          spot.rstep = (spot.rstep ?? 0) + 0.018;
+        };
+        spots.push(spot);
+      }
     }
     return spots;
   }, [layout, settings.worldSeed]);
 
-  // Wall ads come from two systems:
-  //   • Manual list (src/scene/wallAds/manual.ts) — explicit per-building
-  //     ads for unique towers / skyscrapers.
-  //   • Procedural (resolveProceduralWallAds) — low-density signage on
-  //     small buildings (s_01/s_02/s_03), seeded by worldSeed.
+  // Wall ads come from three systems:
+  //   • Manual list (src/scene/wallAds/manual.ts) — hand-calibrated hero ads
+  //     on the unique towers / skyscrapers (deliberately NOT procedural:
+  //     prominent buildings are decorated by hand).
+  //   • Procedural small signs (resolveProceduralWallAds) — street-level
+  //     signage on residential/commercial buildings, seeded by worldSeed.
+  //   • Procedural slot ads (resolveSmallSlotAdsProcedural) — dense stacked
+  //     signs on residential/commercial walls, placed into flat-wall slots
+  //     found by scanning the loaded geometry — so it can only run once
+  //     assets are ready (launchReady).
+  //   Tower/skyscraper company logos are MANUAL too: generated logo textures
+  //   placed via `pneonKey` entries in the manual list.
   const wallAdStates = useMemo(() => {
     if (!layout) return [];
+    const assets = launchReady ? gameRef.current?.assets : null;
     return [
       ...resolveManualWallAds(layout),
       ...resolveProceduralWallAds(layout, settings.worldSeed),
+      ...(assets?.loaded
+        ? resolveSmallSlotAdsProcedural(layout, settings.worldSeed, assets)
+        : []),
     ];
-  }, [layout, settings.worldSeed]);
+  }, [layout, settings.worldSeed, launchReady, gameRef]);
 
   // Generate ground uplights at a subset of building positions
   const groundLights: GroundLight[] = useMemo(() => {
@@ -268,6 +365,14 @@ export function FiniteCitySystem() {
         game={gameRef.current}
         visibility={visibility}
       />
+      <HorizonSkyline visible={visibility.buildings} />
+      <Starfield visible={visibility.buildings} />
+      <StreetGlow layout={layout} visible={visibility.ground} />
+      <FiniteCityTraffic
+        layout={layout}
+        game={gameRef.current}
+        visible={visibility.trafficCars}
+      />
       {visibility.buildings && (
         <InstancedBuildings buildings={buildings} game={gameRef.current} />
       )}
@@ -298,8 +403,11 @@ export function FiniteCitySystem() {
             />
           </group>
         ))}
-      <FiniteCityCollision layout={layout} game={gameRef.current} />
-      <FiniteCityBoundary layout={layout} game={gameRef.current} />
+      <FiniteCityVantage
+        layout={layout}
+        game={gameRef.current}
+        visibility={visibility}
+      />
     </>
   );
 }
@@ -436,6 +544,7 @@ function FiniteCityGround({
       centerZ: (bottomEdge + topEdge) / 2,
       map: cloneTiled(game.assets.getTexture("ground")),
       emissiveMap: cloneTiled(game.assets.getTexture("ground_em")),
+      roughnessMap: cloneTiled(game.assets.getTexture("ground_rough")),
     };
   }, [visibility.ground, layout.bounds, game?.assets, game?.assets?.loaded]);
 
@@ -444,6 +553,7 @@ function FiniteCityGround({
     return () => {
       groundPlane?.map?.dispose();
       groundPlane?.emissiveMap?.dispose();
+      groundPlane?.roughnessMap?.dispose();
     };
   }, [groundPlane]);
 
@@ -468,16 +578,35 @@ function FiniteCityGround({
           position={[groundPlane.centerX, 0, groundPlane.centerZ]}
           receiveShadow>
           <planeGeometry args={[groundPlane.width, groundPlane.depth]} />
-          {/* Matte asphalt: the tiled ground texture provides the detail and
-              the emissive map keeps the subtle blue ground glow. */}
+          {/* Cyberpunk ground level: the tiled diffuse texture provides the
+              detail, the roughness map drives the wet/matte variation, and the
+              emissive map keeps the subtle blue ground glow.
+
+              Reflections (cheap path): the ground reflects scene.environment
+              (the env_night IBL map, set globally in GameBridge) — no extra
+              render pass. metalness raises the reflection strength so it reads
+              when looking down at near-normal angles (a metalness=0 dielectric
+              only reflects ~4% there, i.e. invisible), and the roughnessMap makes
+              the "wet" texels reflect sharper than the matte ones.
+
+              TODO upgrade: for true mirror reflections of the actual buildings/
+              neon, swap this <meshStandardMaterial> for drei's
+              <MeshReflectorMaterial resolution={1024} blur={[400,100]}
+              mixStrength={2} roughnessMap={...} metalness={0.6} /> — costs one
+              extra scene render pass per frame. */}
           <meshStandardMaterial
-            roughness={0.8}
-            metalness={0}
-            color="#3a3a48"
+            roughness={1}
+            metalness={0.3}
+            envMapIntensity={1.5}
+            color="#ffffff"
             map={groundPlane.map ?? undefined}
+            roughnessMap={groundPlane.roughnessMap ?? undefined}
             emissiveMap={groundPlane.emissiveMap ?? undefined}
-            emissive="#0090ff"
-            emissiveIntensity={0.2}
+            // emissive color MUST be non-black: output = emissive × emissiveMap ×
+            // intensity, so a black emissive zeroes the map out no matter how high
+            // the intensity. White lets the emissive texture's own colors show.
+            emissive="#ffffff"
+            emissiveIntensity={0.8}
           />
         </mesh>
       )}
@@ -488,131 +617,361 @@ function FiniteCityGround({
   );
 }
 
-// ─── Collision Registration ───────────────────────────────────────────────────
+// ─── Rooftop Vantage ───────────────────────────────────────────────────────────
 
-function FiniteCityCollision({
-  layout,
-  game,
-}: {
-  layout: FiniteCityLayout;
-  game: GameRuntime | null;
-}) {
-  const colliderMeshesRef = useRef<Mesh[]>([]);
-
-  useEffect(() => {
-    if (!game?.assets?.loaded || !game.collider) return;
-
-    const meshes: Mesh[] = [];
-
-    // Building collision meshes
-    for (const b of layout.buildings) {
-      const geometry = game.assets!.getModel(b.modelKey);
-      if (!geometry) continue;
-      const material = game.assets!.getMaterial(b.materialKey);
-      const mesh = new Mesh(geometry, material);
-      mesh.position.set(b.x, 0, b.z);
-      mesh.scale.set(b.scaleX, b.scaleY, b.scaleZ);
-      mesh.rotation.y = b.rotationY;
-      mesh.updateMatrixWorld(true);
-      game.collider.add(mesh);
-      meshes.push(mesh);
+// Local Y of the rooftop GLB's walkable deck = the dominant up-facing surface.
+// (The GLB's base is at y=0 but the deck slab sits a bit higher, so we can't
+// assume the deck is at the base — find it so the floor collider + spawn land on
+// it. Scale-proof: works off the already-scaled geometry.)
+function findDeckLocalY(geo: BufferGeometry): number {
+  const pos = geo.attributes.position.array as ArrayLike<number>;
+  const idx = geo.index?.array as ArrayLike<number> | undefined;
+  const count = idx ? idx.length : pos.length / 3;
+  const areaByY = new Map<number, number>();
+  const accum = (a: number, b: number, c: number) => {
+    const ux = pos[b * 3] - pos[a * 3];
+    const uy = pos[b * 3 + 1] - pos[a * 3 + 1];
+    const uz = pos[b * 3 + 2] - pos[a * 3 + 2];
+    const wx = pos[c * 3] - pos[a * 3];
+    const wy = pos[c * 3 + 1] - pos[a * 3 + 1];
+    const wz = pos[c * 3 + 2] - pos[a * 3 + 2];
+    const nx = uy * wz - uz * wy;
+    const ny = uz * wx - ux * wz;
+    const nz = ux * wy - uy * wx;
+    const len = Math.hypot(nx, ny, nz);
+    if (!len || ny / len <= 0.9) return; // only ~horizontal, up-facing faces
+    const cy = (pos[a * 3 + 1] + pos[b * 3 + 1] + pos[c * 3 + 1]) / 3;
+    const key = Math.round(cy * 5) / 5; // 0.2 u buckets
+    areaByY.set(key, (areaByY.get(key) ?? 0) + len / 2);
+  };
+  for (let i = 0; i < count; i += 3) {
+    if (idx) accum(idx[i], idx[i + 1], idx[i + 2]);
+    else accum(i, i + 1, i + 2);
+  }
+  let bestY = 0;
+  let bestArea = -1;
+  for (const [y, area] of areaByY) {
+    if (area > bestArea) {
+      bestArea = area;
+      bestY = y;
     }
-
-    // Storefront collision meshes
-    for (const sf of layout.storefronts) {
-      const geometry = game.assets!.getModel("storefronts");
-      if (!geometry) continue;
-      const material = game.assets!.getMaterial(sf.materialKey);
-      const mesh = new Mesh(geometry, material);
-      mesh.position.set(sf.x, 0, sf.z);
-      mesh.updateMatrixWorld(true);
-      game.collider.add(mesh);
-      meshes.push(mesh);
-    }
-
-    colliderMeshesRef.current = meshes;
-
-    return () => {
-      for (const mesh of colliderMeshesRef.current) {
-        game.collider.remove(mesh.uuid);
-      }
-      colliderMeshesRef.current = [];
-    };
-  }, [layout, game?.assets?.loaded, game?.collider]);
-
-  return null;
+  }
+  return bestY;
 }
 
-// ─── Boundary Walls ───────────────────────────────────────────────────────────
+// The player's perch: a Blender-authored rooftop cap GLB (`vantage_rooftop`) on
+// a plain dark shaft that fills to street level. Collision is Rapier boxes: a
+// flat floor + edge walls from the rooftop GLB, plus one solid box per vent
+// prop. Footprint + deck height are derived from the GLB so it survives rescale.
 
-function FiniteCityBoundary({
+// Rooftop vent props, placed on the deck. (dx, dz) are world-unit offsets from
+// the vantage centre; `rot` is yaw in radians (keep to 90° steps — the box
+// collider only swaps X/Z extents for those). Each gets a matching solid box
+// collider, so tweak positions freely here without touching collision code.
+// The vent GLBs ship with a light, clean factory finish that reads as bare
+// white boxes under the rooftop key/fill lights — the brightest surfaces in
+// the player's immediate view. Grime them toward a dark gunmetal that sits in
+// the night palette. Mutates the shared AssetManager materials (vents are only
+// used on the vantage deck); the userData guard keeps repeat calls idempotent.
+const VENT_GRIME_TINT = new Color("#2a2e36");
+function grimeVentMaterial(matOrArr: Material | Material[] | undefined): void {
+  if (!matOrArr) return;
+  const mats = Array.isArray(matOrArr) ? matOrArr : [matOrArr];
+  for (const m of mats) {
+    if (!(m instanceof MeshStandardMaterial) || m.userData.ventGrimed) continue;
+    m.userData.ventGrimed = true;
+    m.color.multiplyScalar(0.45).lerp(VENT_GRIME_TINT, 0.3);
+    m.roughness = Math.max(m.roughness, 0.85);
+    m.metalness = Math.min(m.metalness, 0.35);
+    m.envMapIntensity = 0.2;
+    m.needsUpdate = true;
+  }
+}
+
+const VENT_PLACEMENTS: { key: string; dx: number; dz: number; rot: number }[] =
+  [
+    // Tall piped vents — left side
+    // { key: "vent_01", dx: -15, dz: -3, rot: 0 },
+    { key: "vent_01", dx: -15, dz: -15, rot: 0 },
+    // Small vents — far edge, 2×2
+    { key: "vent_03", dx: -9, dz: 10, rot: 0 },
+    { key: "vent_03", dx: -3, dz: 10, rot: 0 },
+    { key: "vent_03", dx: -9, dz: 16, rot: 0 },
+    { key: "vent_03", dx: -3, dz: 16, rot: 0 },
+    // Fan units — single column nearer the ledge (+X edge)
+    // { key: "vent_02", dx: 16, dz: -12, rot: 0 },
+    { key: "vent_02", dx: 16, dz: -3, rot: 0 },
+    { key: "vent_02", dx: 16, dz: 6, rot: 0 },
+  ];
+
+function FiniteCityVantage({
   layout,
   game,
+  visibility,
 }: {
   layout: FiniteCityLayout;
   game: GameRuntime | null;
+  visibility: { buildings: boolean };
 }) {
-  const wallMeshesRef = useRef<Mesh[]>([]);
+  const v = layout.vantage;
+  const beaconMatRef = useRef<MeshStandardMaterial | null>(null);
 
+  // Visible platform: the Blender-authored rooftop cap GLB, sitting on a plain
+  // dark shaft that fills down to street level. The GLB is the rooftop the
+  // player sees; the shaft is just the building body below (only seen over the
+  // edge). Procedural box visuals (deck/parapet/props) were replaced by the GLB.
+  const meshes = useMemo(() => {
+    if (!v) return [];
+    const { x, z, roofY } = v;
+    const assets = game?.assets;
+    if (!assets?.loaded) return []; // rebuilds when assets finish (see deps)
+    const capGeo = assets.getModel("vantage_rooftop");
+    if (!capGeo) return [];
+    if (!capGeo.boundingBox) capGeo.computeBoundingBox();
+    const bb = capGeo.boundingBox!;
+    const capW = bb.max.x - bb.min.x;
+    const capD = bb.max.z - bb.min.z;
+    const out: Mesh[] = [];
+
+    // Shaft — matches the cap footprint, fills street→roof. Owned by us (the
+    // userData flag tells the dispose effect it's safe to free, unlike the
+    // shared GLB geometry/material from the AssetManager).
+    const shaftMat = new MeshStandardMaterial({
+      color: "#14141d",
+      roughness: 0.9,
+      metalness: 0.1,
+      emissive: "#0a1622",
+      emissiveIntensity: 0.25,
+    });
+    const shaftGeo = new BoxGeometry(capW, roofY, capD);
+    shaftGeo.userData.owned = true;
+    shaftMat.userData.owned = true;
+    const shaft = new Mesh(shaftGeo, shaftMat);
+    shaft.position.set(x, roofY / 2, z);
+    out.push(shaft);
+
+    // Rooftop cap GLB — its base (bb.min.y) sits at the roof height (roofY).
+    const capMat = assets.getMaterial("__embedded_vantage_rooftop");
+    const cap = new Mesh(capGeo, capMat);
+    cap.position.set(x, roofY - bb.min.y, z);
+    out.push(cap);
+
+    // Vent props on the deck. Each model is centred at its origin with base at
+    // y=0, so we drop it on the deck surface. Geometry/materials are shared
+    // (AssetManager-owned), so the dispose effect leaves them alone.
+    const deckY = roofY + (findDeckLocalY(capGeo) - bb.min.y);
+    let tallVentTop: { x: number; y: number; z: number } | null = null;
+    for (const p of VENT_PLACEMENTS) {
+      const geo = assets.getModel(p.key);
+      if (!geo) continue;
+      const mat = assets.getMaterial(`__embedded_${p.key}`);
+      grimeVentMaterial(mat);
+      const m = new Mesh(geo, mat);
+      m.position.set(x + p.dx, deckY, z + p.dz);
+      m.rotation.y = p.rot;
+      out.push(m);
+      // Remember the tip of the tall vent stack for the aircraft beacon. The
+      // topmost VERTEX (the antenna tip), not the bbox top-center — the mast
+      // is off-center, so a bbox placement leaves the beacon floating in air.
+      if (p.key === "vent_01" && !tallVentTop) {
+        const pos = geo.attributes.position;
+        let topY = -Infinity;
+        let tipX = 0;
+        let tipZ = 0;
+        for (let i = 0; i < pos.count; i++) {
+          const py = pos.getY(i);
+          if (py > topY) {
+            topY = py;
+            tipX = pos.getX(i);
+            tipZ = pos.getZ(i);
+          }
+        }
+        const cos = Math.cos(p.rot);
+        const sin = Math.sin(p.rot);
+        tallVentTop = {
+          x: x + p.dx + tipX * cos + tipZ * sin,
+          y: deckY + topY,
+          z: z + p.dz - tipX * sin + tipZ * cos,
+        };
+      }
+    }
+
+    // Red aircraft beacon on the tall vent stack — a small emissive sphere
+    // whose blink is driven by the useFrame below. The only animated light on
+    // the deck; grounds the rooftop against the static skyline.
+    if (tallVentTop) {
+      const beaconMat = new MeshStandardMaterial({
+        color: "#1a0505",
+        roughness: 0.6,
+        emissive: "#ff2a1a",
+        emissiveIntensity: 0.4,
+      });
+      const beaconGeo = new SphereGeometry(0.22, 12, 8);
+      beaconGeo.userData.owned = true;
+      beaconMat.userData.owned = true;
+      const beacon = new Mesh(beaconGeo, beaconMat);
+      beacon.position.set(tallVentTop.x, tallVentTop.y + 0.16, tallVentTop.z);
+      out.push(beacon);
+      beaconMatRef.current = beaconMat;
+    }
+
+    return out;
+  }, [v, game?.assets, game?.assets?.loaded]);
+
+  // Dispose only the geometries/materials WE created (tagged userData.owned);
+  // the GLB geometry + embedded material are owned by the AssetManager.
   useEffect(() => {
-    if (!game?.collider) return;
+    return () => {
+      for (const m of meshes) {
+        const geo = m.geometry;
+        if (geo?.userData?.owned) geo.dispose();
+        const mat = m.material;
+        if (!Array.isArray(mat) && mat?.userData?.owned) mat.dispose();
+      }
+    };
+  }, [meshes]);
 
-    const { minX, maxX, minZ, maxZ } = layout.bounds;
-    const wallHeight = 1000;
-    const xSpan = maxX - minX;
-    const zSpan = maxZ - minZ;
-    const centerX = (minX + maxX) / 2;
-    const centerZ = (minZ + maxZ) / 2;
+  // Aircraft-beacon blink: a double flash every ~2.4 s (bright pops that bloom,
+  // dim ember in between) rather than a sine pulse, so it reads as a warning
+  // strobe and not a fading light.
+  useFrame(({ clock }) => {
+    const mat = beaconMatRef.current;
+    if (!mat) return;
+    const t = clock.elapsedTime % 2.4;
+    const on = t < 0.12 || (t >= 0.3 && t < 0.42);
+    mat.emissiveIntensity = on ? 6 : 0.4;
+  });
 
-    const invisMat = new MeshBasicMaterial({
-      visible: false,
-      side: DoubleSide,
+  // Rapier static colliders for the vantage (the player's kinematic capsule is
+  // swept against these by the character controller). The rooftop GLB is just
+  // deck + parapet, so collision is two simple box types derived from it:
+  //   • Flat floor box — the standing surface at the deck height.
+  //   • Edge walls — 4 invisible walls just outside the footprint so the player
+  //     can't walk off the roof even though the parapet is low.
+  // Rooftop props are placed separately, each with its own matching collider.
+  useEffect(() => {
+    const physics = game?.physics;
+    const assets = game?.assets;
+    if (!v || !physics || !assets?.loaded) return;
+    const { x, z, roofY } = v;
+    const capGeo = assets.getModel("vantage_rooftop");
+    if (!capGeo) return;
+    if (!capGeo.boundingBox) capGeo.computeBoundingBox();
+    const bb = capGeo.boundingBox!;
+    const hw = (bb.max.x - bb.min.x) / 2;
+    const hd = (bb.max.z - bb.min.z) / 2;
+    const cx = x + (bb.max.x + bb.min.x) / 2; // bbox center (GLB is ~centered)
+    const cz = z + (bb.max.z + bb.min.z) / 2;
+    // Walkable deck height in world units (GLB base sits at roofY since bb.min.y≈0).
+    const deckLocalY = findDeckLocalY(capGeo);
+    const deckY = roofY + (deckLocalY - bb.min.y);
+    const WALL_HALF_H = 1.6; // ~2 m tall — capsule can't autostep over it
+    const WALL_HALF_T = 0.5; // 1 u thick, sits just outside the footprint edge
+    const wallY = deckY + WALL_HALF_H;
+
+    const ids: string[] = [];
+    const addBox = (
+      id: string,
+      hx: number,
+      hy: number,
+      hz: number,
+      px: number,
+      py: number,
+      pz: number,
+    ) => {
+      physics.addStaticBox(id, hx, hy, hz, px, py, pz);
+      ids.push(id);
+    };
+
+    // Flat floor — the standing surface, top at the deck height.
+    addBox("vantage-floor", hw, 2, hd, cx, deckY - 2, cz);
+    // Edge walls (inner face flush with the footprint edge) — fall safety.
+    addBox(
+      "vantage-wall-n",
+      hw + WALL_HALF_T,
+      WALL_HALF_H,
+      WALL_HALF_T,
+      cx,
+      wallY,
+      cz + hd + WALL_HALF_T,
+    );
+    addBox(
+      "vantage-wall-s",
+      hw + WALL_HALF_T,
+      WALL_HALF_H,
+      WALL_HALF_T,
+      cx,
+      wallY,
+      cz - hd - WALL_HALF_T,
+    );
+    addBox(
+      "vantage-wall-e",
+      WALL_HALF_T,
+      WALL_HALF_H,
+      hd + WALL_HALF_T,
+      cx + hw + WALL_HALF_T,
+      wallY,
+      cz,
+    );
+    addBox(
+      "vantage-wall-w",
+      WALL_HALF_T,
+      WALL_HALF_H,
+      hd + WALL_HALF_T,
+      cx - hw - WALL_HALF_T,
+      wallY,
+      cz,
+    );
+
+    // One solid box per vent prop, sized to its bounding box (+ a small margin so
+    // the player stops far enough back that the vent face stays outside the
+    // camera near plane). For 90° yaw the footprint X/Z are swapped.
+    const PROP_MARGIN = 0.5;
+    VENT_PLACEMENTS.forEach((p, i) => {
+      const geo = assets.getModel(p.key);
+      if (!geo) return;
+      if (!geo.boundingBox) geo.computeBoundingBox();
+      const vb = geo.boundingBox!;
+      let phx = (vb.max.x - vb.min.x) / 2 + PROP_MARGIN;
+      let phz = (vb.max.z - vb.min.z) / 2 + PROP_MARGIN;
+      const phy = (vb.max.y - vb.min.y) / 2;
+      const quarter = Math.round(p.rot / (Math.PI / 2)) % 2 !== 0;
+      if (quarter) [phx, phz] = [phz, phx];
+      addBox(`vent-${i}`, phx, phy, phz, x + p.dx, deckY + phy, z + p.dz);
     });
 
-    const walls: Mesh[] = [];
-
-    // North wall (maxZ)
-    const northGeo = new PlaneGeometry(xSpan, wallHeight);
-    const northWall = new Mesh(northGeo, invisMat);
-    northWall.position.set(centerX, wallHeight / 2, maxZ);
-    northWall.updateMatrixWorld(true);
-    walls.push(northWall);
-
-    // South wall (minZ)
-    const southGeo = new PlaneGeometry(xSpan, wallHeight);
-    const southWall = new Mesh(southGeo, invisMat);
-    southWall.position.set(centerX, wallHeight / 2, minZ);
-    southWall.updateMatrixWorld(true);
-    walls.push(southWall);
-
-    // East wall (maxX)
-    const eastGeo = new PlaneGeometry(zSpan, wallHeight);
-    const eastWall = new Mesh(eastGeo, invisMat);
-    eastWall.position.set(maxX, wallHeight / 2, centerZ);
-    eastWall.rotation.y = Math.PI / 2;
-    eastWall.updateMatrixWorld(true);
-    walls.push(eastWall);
-
-    // West wall (minX)
-    const westGeo = new PlaneGeometry(zSpan, wallHeight);
-    const westWall = new Mesh(westGeo, invisMat);
-    westWall.position.set(minX, wallHeight / 2, centerZ);
-    westWall.rotation.y = Math.PI / 2;
-    westWall.updateMatrixWorld(true);
-    walls.push(westWall);
-
-    for (const wall of walls) {
-      game.collider.add(wall);
-    }
-    wallMeshesRef.current = walls;
+    // Seat the capsule on the deck now that the colliders exist (guards against a
+    // spawn applied before they were registered).
+    physics.setEye({ x, y: deckY + HUMAN_EYE_HEIGHT_UNITS, z });
 
     return () => {
-      for (const wall of wallMeshesRef.current) {
-        game.collider.remove(wall.uuid);
-      }
-      wallMeshesRef.current = [];
+      for (const id of ids) physics.removeStatic(id);
     };
-  }, [layout, game?.collider]);
+  }, [v, game?.physics, game?.assets, game?.assets?.loaded]);
 
-  return null;
+  if (!v || !visibility.buildings) return null;
+  return (
+    <>
+      {meshes.map((mesh) => (
+        <primitive key={mesh.uuid} object={mesh} />
+      ))}
+      {/* Rooftop lighting so the deck reads against the night skyline: a warm
+          key light high over the center plus a cooler fill toward the corner
+          structures. (Local point lights — kept off the rest of the city.) */}
+      <pointLight
+        position={[v.x, v.roofY + 24, v.z]}
+        color="#ffe6c0"
+        intensity={100}
+        distance={190}
+        decay={2}
+      />
+      <pointLight
+        position={[v.x - v.width / 4, v.roofY + 10, v.z + v.depth / 4]}
+        color="#4a7bff"
+        intensity={200}
+        distance={100}
+        decay={2}
+      />
+    </>
+  );
 }

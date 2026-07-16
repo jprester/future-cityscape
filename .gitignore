@@ -24,3 +24,6 @@ setting.local.json
 *.sln
 *.sw?
 .claude/*
+# Keep .claude local, except the committed run skill (shared agent tooling).
+!.claude/skills
+.claude/skills/**/screenshot.png

@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "name": "commercial-slim-tower-01",
+  "description": "Slim dark-metal tower using one vertical-pilaster facade family.",
+  "material": {
+    "name": "commercial_atlas_v1",
+    "roughness": 0.62,
+    "metallic": 0.12,
+    "emissiveStrength": 1.2,
+    "normalStrength": 0.5
+  },
+  "facade": {
+    "region": "facade_08",
+    "floorHeight": 3.4,
+    "bayWidth": 2.25,
+    "horizontalAnchor": 0.5
+  },
+  "roof": {
+    "tileSize": 8,
+    "tiles": {
+      "roof_dark_metal": ["roof_metal_tile_a", "roof_metal_tile_b"],
+      "roof_weathered_concrete": ["roof_concrete_tile_a", "roof_concrete_tile_b"]
+    },
+    "parapet": {
+      "height": 0.9,
+      "width": 0.55,
+      "sideRegion": "hvac_louver_wide",
+      "capRegion": "roof_metal_tile_a"
+    }
+  },
+  "masses": [
+    {
+      "name": "podium",
+      "center": [0, 0],
+      "footprint": [38, 32],
+      "floors": 4,
+      "bottomFloor": 0,
+      "roofRegion": "roof_dark_metal"
+    },
+    {
+      "name": "main_tower",
+      "center": [0, 0],
+      "footprint": [32, 26],
+      "floors": 18,
+      "bottomFloor": 4,
+      "roofRegion": "roof_weathered_concrete"
+    },
+    {
+      "name": "upper_tower",
+      "center": [0, 0],
+      "footprint": [24, 20],
+      "floors": 14,
+      "bottomFloor": 22,
+      "roofRegion": "roof_weathered_concrete"
+    }
+  ],
+  "props": [
+    {
+      "name": "service_core",
+      "center": [0, 0],
+      "size": [8, 7, 6],
+      "bottomFloor": 36,
+      "regions": {
+        "front": "service_wall_clean",
+        "right": "hvac_access_panel",
+        "back": "service_wall_clean",
+        "left": "hvac_access_panel",
+        "top": "roof_metal_tile_a"
+      }
+    },
+    {
+      "name": "hvac_west",
+      "center": [-7, 5],
+      "size": [4, 4, 2.5],
+      "bottomFloor": 36,
+      "regions": {
+        "front": "hvac_louver_wide",
+        "right": "hvac_access_panel",
+        "back": "hvac_louver_wide",
+        "left": "hvac_access_panel",
+        "top": "hvac_fan_quad"
+      }
+    },
+    {
+      "name": "hvac_east",
+      "center": [7, 5],
+      "size": [4, 4, 2.5],
+      "bottomFloor": 36,
+      "regions": {
+        "front": "hvac_louver_wide",
+        "right": "hvac_access_panel",
+        "back": "hvac_louver_wide",
+        "left": "hvac_access_panel",
+        "top": "hvac_fan_quad"
+      }
+    }
+  ],
+  "beacons": [
+    {
+      "name": "service_core_beacon",
+      "center": [0, 0],
+      "bottomFloor": 36,
+      "baseOffset": 6,
+      "rodHeight": 1.8,
+      "capRadius": 0.28
+    }
+  ],
+  "preview": {
+    "resolution": 900,
+    "camera": [165, -205, 118],
+    "target": [0, 0, 62],
+    "roofCamera": {
+      "camera": [84, -98, 164],
+      "target": [0, 0, 108]
+    }
+  }
+}

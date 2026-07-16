@@ -45,8 +45,12 @@ export function InstancedBuildings({
 }: InstancedBuildingsProps) {
   const groupRef = useRef<Group>(null);
   const meshesAddedRef = useRef(false);
+  const requiredModelKeys = useMemo(
+    () => [...new Set(buildings.map((building) => building.modelKey))],
+    [buildings],
+  );
   const { updateInstances, getInstancedMeshes, isReady } =
-    useBuildingInstances(game?.assets ?? null);
+    useBuildingInstances(game?.assets ?? null, requiredModelKeys);
 
   // Add InstancedMesh objects to scene once
   useEffect(() => {

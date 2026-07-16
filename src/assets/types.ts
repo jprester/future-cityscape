@@ -10,6 +10,7 @@ import type {
 import { getEmbeddedEmissiveEntries } from "../config/buildingRegistry";
 import { ADS_META, adMatKey } from "../config/ads";
 import { SMALL_ADS_META, smallAdMatKey } from "../config/smallAds";
+import { COMMERCIAL_ATLAS_MATERIAL_KEY } from "../config/commercialBuildingKit";
 
 // ============================================================================
 // Texture Types
@@ -17,6 +18,8 @@ import { SMALL_ADS_META, smallAdMatKey } from "../config/smallAds";
 
 export type TextureOptions = {
   colorSpace?: ColorSpace;
+  /** glTF UVs use an unflipped image origin; external maps need false. */
+  flipY?: boolean;
   mapping?: Mapping;
   magFilter?: MagnificationTextureFilter;
   wrapS?: Wrapping;
@@ -132,8 +135,8 @@ export type EmissiveMultipliers = {
  */
 // Build the ad emissive-intensity rows from ADS_META so adding a new ad
 // only requires editing src/config/ads.ts.
-//   • holo      base 0.7 — slightly brighter to compensate for opacity
-//   • billboard base 0.6 — lower since the image is fully opaque
+//   • holo      base 0.95 — brighter to compensate for additive transparency
+//   • billboard base 0.85 — vivid, while the black base prevents panel washout
 function buildAdEmissiveEntries(): Record<
   string,
   { category: keyof EmissiveMultipliers; base: number }
@@ -143,8 +146,8 @@ function buildAdEmissiveEntries(): Record<
     { category: keyof EmissiveMultipliers; base: number }
   > = {};
   for (const ad of ADS_META) {
-    entries[adMatKey(ad.id, "holo")] = { category: "ads", base: 0.7 };
-    entries[adMatKey(ad.id, "billboard")] = { category: "ads", base: 0.6 };
+    entries[adMatKey(ad.id, "holo")] = { category: "ads", base: 0.95 };
+    entries[adMatKey(ad.id, "billboard")] = { category: "ads", base: 0.85 };
   }
   // Small ads / neon signs — same category as billboards, brighter still
   // since the alpha-cut around the sign means less surface area is glowing.
@@ -172,6 +175,7 @@ export const BASE_EMISSIVE_INTENSITIES: Record<
   building_09: { category: "buildings", base: 2.0 },
   building_10: { category: "buildings", base: 2.0 },
   mega_building_01: { category: "buildings", base: 2.0 },
+  [COMMERCIAL_ATLAS_MATERIAL_KEY]: { category: "buildings", base: 1.25 },
   // Embedded GLB models — derived from building registry
   ...getEmbeddedEmissiveEntries(),
   // Neons (storefronts, signs)

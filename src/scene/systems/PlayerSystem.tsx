@@ -22,10 +22,6 @@ export function PlayerSystem() {
     }
 
     game.updatePlayer(delta);
-
-    if (!game.collider.enabled) {
-      game.collider.enabled = true;
-    }
   }, 1);
 
   return null;

@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "name": "commercial-stepped-tower-01",
+  "description": "Tall blue-glass commercial tower with four coherent setbacks.",
+  "material": {
+    "name": "commercial_atlas_v1",
+    "roughness": 0.62,
+    "metallic": 0.12,
+    "emissiveStrength": 1.3,
+    "normalStrength": 0.5
+  },
+  "facade": {
+    "region": "facade_01",
+    "floorHeight": 3.4,
+    "bayWidth": 5.5,
+    "horizontalAnchor": 0.5
+  },
+  "roof": {
+    "tileSize": 8,
+    "tiles": {
+      "roof_dark_metal": ["roof_metal_tile_a", "roof_metal_tile_b"],
+      "roof_weathered_concrete": ["roof_concrete_tile_a", "roof_concrete_tile_b"]
+    },
+    "parapet": {
+      "height": 0.9,
+      "width": 0.55,
+      "sideRegion": "hvac_louver_wide",
+      "capRegion": "roof_metal_tile_a"
+    }
+  },
+  "masses": [
+    {
+      "name": "podium",
+      "center": [0, 0],
+      "footprint": [46, 34],
+      "floors": 5,
+      "bottomFloor": 0,
+      "roofRegion": "roof_dark_metal"
+    },
+    {
+      "name": "lower_tower",
+      "center": [0, 0],
+      "footprint": [42, 30],
+      "floors": 18,
+      "bottomFloor": 5,
+      "roofRegion": "roof_weathered_concrete"
+    },
+    {
+      "name": "middle_tower",
+      "center": [0, 0],
+      "footprint": [34, 26],
+      "floors": 16,
+      "bottomFloor": 23,
+      "roofRegion": "roof_weathered_concrete"
+    },
+    {
+      "name": "upper_tower",
+      "center": [0, 0],
+      "footprint": [26, 22],
+      "floors": 12,
+      "bottomFloor": 39,
+      "roofRegion": "roof_weathered_concrete"
+    }
+  ],
+  "props": [
+    {
+      "name": "service_core",
+      "center": [0, 0],
+      "size": [10, 8, 7],
+      "bottomFloor": 51,
+      "regions": {
+        "front": "service_wall_clean",
+        "right": "hvac_access_panel",
+        "back": "service_wall_clean",
+        "left": "hvac_access_panel",
+        "top": "roof_metal_tile_a"
+      }
+    },
+    {
+      "name": "hvac_nw",
+      "center": [-8, 6],
+      "size": [4, 4, 2.5],
+      "bottomFloor": 51,
+      "regions": {
+        "front": "hvac_louver_wide",
+        "right": "hvac_access_panel",
+        "back": "hvac_louver_wide",
+        "left": "hvac_access_panel",
+        "top": "hvac_fan_quad"
+      }
+    },
+    {
+      "name": "hvac_ne",
+      "center": [8, 6],
+      "size": [4, 4, 2.5],
+      "bottomFloor": 51,
+      "regions": {
+        "front": "hvac_louver_wide",
+        "right": "hvac_access_panel",
+        "back": "hvac_louver_wide",
+        "left": "hvac_access_panel",
+        "top": "hvac_fan_quad"
+      }
+    },
+    {
+      "name": "hvac_south",
+      "center": [0, -7],
+      "size": [5, 5, 2.5],
+      "bottomFloor": 51,
+      "regions": {
+        "front": "hvac_louver_wide",
+        "right": "hvac_access_panel",
+        "back": "hvac_louver_wide",
+        "left": "hvac_access_panel",
+        "top": "hvac_fan_quad"
+      }
+    }
+  ],
+  "beacons": [
+    {
+      "name": "service_core_beacon",
+      "center": [0, 0],
+      "bottomFloor": 51,
+      "baseOffset": 7,
+      "rodHeight": 2,
+      "capRadius": 0.3
+    }
+  ],
+  "preview": {
+    "resolution": 900,
+    "camera": [205, -235, 158],
+    "target": [0, 0, 86],
+    "roofCamera": {
+      "camera": [92, -108, 218],
+      "target": [0, 0, 156]
+    }
+  }
+}

@@ -5,6 +5,7 @@ import {
   Color,
   AdditiveBlending,
   DoubleSide,
+  Vector2,
 } from "three";
 import type { Texture, Material } from "three";
 import type { MaterialContext } from "../types";
@@ -14,21 +15,34 @@ import {
   smallAdMatKey,
   smallAdTextureKey,
 } from "../../config/smallAds";
+import {
+  COMMERCIAL_ATLAS_MATERIAL_KEY,
+  COMMERCIAL_ATLAS_TEXTURE_KEYS,
+} from "../../config/commercialBuildingKit";
 
 type GetTexture = (key: string) => Texture | undefined;
 
-// Fixed neon blue used for every `building_NN` material's window emissive.
-// Previously a weighted random palette (teal / white / amber / magenta) gave
-// each material a different tint, which made the small procedural buildings
-// look stylistically detached from the GLB skyscrapers. Locking to a single
-// cool blue keeps the small-building skyline coherent with the rest of the
-// scene. Change the constant below to retint everything in one place.
-const h = 185 + Math.random() * 25;
-const BUILDING_WINDOW_EMISSIVE = new Color(`hsl(${h}, 70%, 78%)`);
+// Window emissive uses a controlled TWO-TONE split: most `building_NN`
+// materials glow a cool neon-blue, a portion glow warm amber. The warm windows
+// popping out of the cool purple fog are the signature cyberpunk-skyline look
+// (see the Gemini reference). This is deliberately *not* the old 4-color random
+// palette (teal/white/amber/magenta), which looked stylistically incoherent — a
+// tight blue↔amber two-tone keeps the skyline unified while adding depth and
+// contrast. Tune the fraction / hues below to retint everything in one place.
+const WARM_WINDOW_FRACTION = 0.38;
+
+function coolWindowEmissive(): Color {
+  return new Color(`hsl(${190 + Math.random() * 20}, 70%, 76%)`);
+}
+
+function warmWindowEmissive(): Color {
+  return new Color(`hsl(${32 + Math.random() * 12}, 85%, 70%)`);
+}
 
 function pickWindowEmissive(): Color {
-  // Clone so callers can mutate without affecting the shared template.
-  return BUILDING_WINDOW_EMISSIVE.clone();
+  return Math.random() < WARM_WINDOW_FRACTION
+    ? warmWindowEmissive()
+    : coolWindowEmissive();
 }
 
 /**
@@ -90,6 +104,23 @@ export function createMaterialFactories(): MaterialFactoryMap {
       bumpScale: 10,
     });
 
+  // Commercial kit v1 — three geometry-only GLBs share these four maps. This
+  // keeps the atlas in GPU memory once instead of embedding it in every model.
+  factories[COMMERCIAL_ATLAS_MATERIAL_KEY] = (getTexture, ctx) =>
+    new MeshStandardMaterial({
+      map: getTexture(COMMERCIAL_ATLAS_TEXTURE_KEYS.diffuse),
+      emissive: 0xffffff,
+      emissiveMap: getTexture(COMMERCIAL_ATLAS_TEXTURE_KEYS.emissive),
+      emissiveIntensity: ctx.windowLightsEnabled ? 1.25 : 0,
+      roughnessMap: getTexture(COMMERCIAL_ATLAS_TEXTURE_KEYS.roughness),
+      roughness: 1,
+      metalness: 0.12,
+      normalMap: getTexture(COMMERCIAL_ATLAS_TEXTURE_KEYS.normal),
+      normalScale: new Vector2(0.5, 0.5),
+      envMap: getTexture("env_night"),
+      envMapIntensity: 0.45,
+    });
+
   // Building materials (10 variants with weighted-palette emissive colors)
   for (let i = 1; i <= 10; i++) {
     const id = i.toString().padStart(2, "0");
@@ -122,6 +153,7 @@ export function createMaterialFactories(): MaterialFactoryMap {
 
     factories[adMatKey(ad.id, "holo")] = (getTexture) =>
       new MeshPhongMaterial({
+        color: 0x000000,
         emissive: 0xddf6ff,
         emissiveMap: getTexture(texKey),
         emissiveIntensity: 0.25, // Overwritten by BASE_EMISSIVE_INTENSITIES × preset
@@ -135,6 +167,12 @@ export function createMaterialFactories(): MaterialFactoryMap {
 
     factories[adMatKey(ad.id, "billboard")] = (getTexture) =>
       new MeshPhongMaterial({
+        // The panel itself must stay black: with MeshPhong's default light
+        // base, dark texture pixels turn into a flat gray rectangle. The
+        // emissive map is the LED content and should be the only visible light.
+        color: 0x000000,
+        specular: 0x000000,
+        shininess: 0,
         emissive: 0xffffff,
         emissiveMap: getTexture(texKey),
         emissiveIntensity: 0.7, // Overwritten by BASE_EMISSIVE_INTENSITIES × preset
@@ -142,7 +180,7 @@ export function createMaterialFactories(): MaterialFactoryMap {
       });
   }
 
-  // Small ads / neon signs — one billboard-style material per PNG. The PNGs
+  // Small ads / neon signs — one billboard-style material per WebP. The images
   // are alpha-cut posters with neon foreground on transparent (or near-
   // transparent) backgrounds, so we want:
   //   • transparent: true + alphaTest      — discard transparent pixels
@@ -182,18 +220,28 @@ export function createMaterialFactories(): MaterialFactoryMap {
       });
   }
 
-  // Spotlights (4 variants)
+  // Spotlights (4 variants). Violet-family searchlight beams to match the
+  // cyberpunk reference — previously flat white, which bloomed to a harsh
+  // lime-white core. A reduced opacity softens each beam into a volumetric glow
+  // instead of a hard line, and four slightly different violets give the
+  // skyline variety. The alphaMap (a soft cone gradient) shapes the falloff.
+  const SPOTLIGHT_BEAM_COLORS = [0x8a5cff, 0xb060ff, 0x6a7cff, 0xa070ff];
   for (let i = 1; i <= 4; i++) {
     const id = i.toString().padStart(2, "0");
     factories[`spotlight_${id}`] = (getTexture) =>
       new MeshPhongMaterial({
         alphaMap: getTexture(`spotlight_${id}`),
-        color: 0xffffff,
+        color: SPOTLIGHT_BEAM_COLORS[i - 1],
         shininess: 0,
         specular: 0x000000,
         blending: AdditiveBlending,
+        // Render in the transparent pass with depth testing so opaque buildings
+        // occlude the part of the beam behind them (additive is order-
+        // independent, so no depth WRITE — beams don't occlude each other).
         depthWrite: false,
-        transparent: false,
+        depthTest: true,
+        transparent: true,
+        opacity: 0.55,
       });
   }
 

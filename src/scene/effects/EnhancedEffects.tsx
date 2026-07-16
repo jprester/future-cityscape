@@ -11,7 +11,6 @@ import {
   SMAA,
   FXAA,
   N8AO,
-  DepthOfField,
 } from "@react-three/postprocessing";
 import { ToneMappingMode, BlendFunction, KernelSize } from "postprocessing";
 import { Vector2 } from "three";
@@ -64,7 +63,10 @@ const QUALITY_SETTINGS = {
     enableVignette: true,
     enableNoise: true,
     enableAO: true,
-    enableDOF: true,
+    // DepthOfField runs several full-screen CoC/bokeh passes for a subtle
+    // background blur that's barely noticeable from the rooftop vantage —
+    // not worth the fill-rate cost on a fragment-bound scene.
+    enableDOF: false,
     useSmaa: false, // FXAA is much cheaper, SMAA rarely worth the cost
     bloomResolutionScale: 0.5, // Half resolution bloom - big GPU savings, minimal visual difference
     bloomKernelSize: KernelSize.MEDIUM, // Medium kernel - good balance of quality/performance
@@ -120,13 +122,18 @@ export function EnhancedEffects({
       {/* Antialiasing - SMAA for high quality, FXAA for medium */}
       {quality.useSmaa ? <SMAA /> : <FXAA />}
 
-      {/* Ambient Occlusion - darkens crevices and contact areas */}
+      {/* Ambient Occlusion - darkens crevices and contact areas.
+          AO is the heaviest full-screen pass (many depth samples/pixel) and
+          contributes little in this dark night scene, so it's kept cheap:
+          always half-res + "performance" sampling. Bump quality if AO needs to
+          read more crisply in a brighter/daytime preset. */}
       {quality.enableAO && (
         <N8AO
-          aoRadius={8}
-          intensity={25}
+          aoRadius={4}
+          intensity={4}
           distanceFalloff={0.5}
-          halfRes={qualityLevel === "medium"}
+          halfRes
+          quality="performance"
         />
       )}
 
@@ -174,14 +181,9 @@ export function EnhancedEffects({
         />
       )}
 
-      {/* Depth of Field - subtle background blur for cinematic look */}
-      {quality.enableDOF && (
-        <DepthOfField
-          focusDistance={0.01}
-          focalLength={0.05}
-          bokehScale={0.6}
-        />
-      )}
+      {/* Depth of Field intentionally removed — see enableDOF note above.
+          Re-add a <DepthOfField/> here (gated on a quality flag) if a future
+          preset wants cinematic background blur. */}
 
       {/* Film Noise/Grain (high quality only) */}
       {quality.enableNoise && preset.noise.enabled && (

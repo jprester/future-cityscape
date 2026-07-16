@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "name": "commercial-wide-slab-01",
+  "description": "Wide horizontal-banded office slab with two restrained setbacks.",
+  "material": {
+    "name": "commercial_atlas_v1",
+    "roughness": 0.62,
+    "metallic": 0.12,
+    "emissiveStrength": 1.25,
+    "normalStrength": 0.5
+  },
+  "facade": {
+    "region": "facade_03",
+    "floorHeight": 3.4,
+    "bayWidth": 2.7,
+    "horizontalAnchor": 0.5
+  },
+  "roof": {
+    "tileSize": 8,
+    "tiles": {
+      "roof_dark_metal": ["roof_metal_tile_a", "roof_metal_tile_b"],
+      "roof_weathered_concrete": ["roof_concrete_tile_a", "roof_concrete_tile_b"]
+    },
+    "parapet": {
+      "height": 0.9,
+      "width": 0.55,
+      "sideRegion": "hvac_louver_wide",
+      "capRegion": "roof_metal_tile_a"
+    }
+  },
+  "masses": [
+    {
+      "name": "podium",
+      "center": [0, 0],
+      "footprint": [48, 36],
+      "floors": 4,
+      "bottomFloor": 0,
+      "roofRegion": "roof_dark_metal"
+    },
+    {
+      "name": "main_slab",
+      "center": [0, 0],
+      "footprint": [44, 32],
+      "floors": 18,
+      "bottomFloor": 4,
+      "roofRegion": "roof_weathered_concrete"
+    },
+    {
+      "name": "upper_slab",
+      "center": [0, 0],
+      "footprint": [36, 28],
+      "floors": 10,
+      "bottomFloor": 22,
+      "roofRegion": "roof_weathered_concrete"
+    }
+  ],
+  "props": [
+    {
+      "name": "service_core",
+      "center": [0, 0],
+      "size": [12, 10, 6],
+      "bottomFloor": 32,
+      "regions": {
+        "front": "service_wall_clean",
+        "right": "hvac_access_panel",
+        "back": "service_wall_clean",
+        "left": "hvac_access_panel",
+        "top": "roof_metal_tile_a"
+      }
+    },
+    {
+      "name": "hvac_west",
+      "center": [-11, 7],
+      "size": [5, 5, 2.5],
+      "bottomFloor": 32,
+      "regions": {
+        "front": "hvac_louver_wide",
+        "right": "hvac_access_panel",
+        "back": "hvac_louver_wide",
+        "left": "hvac_access_panel",
+        "top": "hvac_fan_quad"
+      }
+    },
+    {
+      "name": "hvac_east",
+      "center": [11, 7],
+      "size": [5, 5, 2.5],
+      "bottomFloor": 32,
+      "regions": {
+        "front": "hvac_louver_wide",
+        "right": "hvac_access_panel",
+        "back": "hvac_louver_wide",
+        "left": "hvac_access_panel",
+        "top": "hvac_fan_quad"
+      }
+    }
+  ],
+  "beacons": [
+    {
+      "name": "service_core_beacon",
+      "center": [0, 0],
+      "bottomFloor": 32,
+      "baseOffset": 6,
+      "rodHeight": 1.8,
+      "capRadius": 0.28
+    }
+  ],
+  "preview": {
+    "resolution": 900,
+    "camera": [165, -195, 112],
+    "target": [0, 0, 56],
+    "roofCamera": {
+      "camera": [92, -108, 142],
+      "target": [0, 0, 93]
+    }
+  }
+}

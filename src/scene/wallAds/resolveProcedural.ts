@@ -50,21 +50,14 @@ const SIGN_TIERS: Record<string, SignTier> = {
     spawn: 0.7,
     bucketWeights: { "1-4": 3, "2-3": 1.5, "3-2": 1.5, "4-1": 2 },
   },
-  industrial: {
-    spawn: 0.4,
-    bucketWeights: { "1-4": 2, "2-3": 0.5, "3-2": 1, "4-1": 1.5 },
-  },
 };
 
-// Models that skip the procedural small-ads pass entirely — e.g. round
-// or unusually-shaped buildings where flat planes read wrong.
-const SMALL_AD_SKIP: ReadonlySet<string> = new Set(["s_03_06"]);
-
+// Procedural small-signs only go on the 4-per-block residential/commercial
+// GLBs. Skyscrapers and towers (1-per-block) carry manual ads instead, so they
+// return null here.
 function classifySignTier(modelKey: string): SignTier | null {
-  if (SMALL_AD_SKIP.has(modelKey)) return null;
-  if (modelKey.startsWith("s_01_")) return SIGN_TIERS.residential;
-  if (modelKey.startsWith("s_02_")) return SIGN_TIERS.commercial;
-  if (modelKey.startsWith("s_03_")) return SIGN_TIERS.industrial;
+  if (modelKey.startsWith("residential_")) return SIGN_TIERS.residential;
+  if (modelKey.startsWith("commercial_")) return SIGN_TIERS.commercial;
   return null;
 }
 
@@ -80,7 +73,7 @@ function classifySignTier(modelKey: string): SignTier | null {
  * Each direction is the world Y rotation that orients a plane's +Z normal
  * outward toward that road.
  */
-function getRoadFacingDirs(x: number, z: number): number[] {
+export function getRoadFacingDirs(x: number, z: number): number[] {
   const localX = ((x % CELL_SIZE) + CELL_SIZE) % CELL_SIZE;
   const localZ = ((z % CELL_SIZE) + CELL_SIZE) % CELL_SIZE;
   const half = CITY_BLOCK_SIZE / 2;
@@ -93,44 +86,24 @@ function getRoadFacingDirs(x: number, z: number): number[] {
 }
 
 /**
- * Per-model half-extents of small buildings, measured from their OBJ/GLB
- * geometry in the model's local space. Buildings vary 50–60 units wide,
- * and some are rectangular (different x vs z), so a single global wall
- * radius makes signs float on narrow buildings or clip into wide ones.
- *
- * Values are in MODEL-local space. Building runtime rotation (0/90/180/
- * 270°) swaps which axis maps to world x vs z — see signWallRadius below.
+ * Per-model half-extents of small buildings (model-local space). A single
+ * global wall radius makes signs float on narrow buildings or clip into wide
+ * ones, so models with a measured footprint can override it here. The current
+ * residential/commercial GLBs are all ~50–62 u wide (half ≈ 25–31), close
+ * enough to the fallback that none need an entry yet — add one if a sign
+ * visibly floats or clips. Building runtime rotation (0/90/180/270°) swaps
+ * which axis maps to world x vs z — see signWallRadius below.
  */
 const SMALL_BUILDING_HALF_EXTENTS: Record<
   string,
   { halfX: number; halfZ: number }
-> = {
-  s_01_01: { halfX: 29.5, halfZ: 29.6 },
-  s_01_02: { halfX: 29.7, halfZ: 29.4 },
-  s_01_03: { halfX: 28.6, halfZ: 29.3 },
-  s_02_01: { halfX: 25.3, halfZ: 29.8 },
-  s_02_02: { halfX: 27.7, halfZ: 25.6 },
-  s_02_03: { halfX: 28.7, halfZ: 28.2 },
-  s_03_01: { halfX: 29.8, halfZ: 28.6 },
-  s_03_02: { halfX: 28.8, halfZ: 30.1 },
-  s_03_03: { halfX: 30.7, halfZ: 26.5 },
-  // GLB variants — computed from each model's node transform (90° X
-  // rotation + non-uniform scale baked into the geometry). These differ
-  // significantly from the OBJ-building defaults, which is what was
-  // causing visible ad-float on s_03_04/06/07 in particular.
-  s_03_04: { halfX: 22.6, halfZ: 26.0 },
-  s_03_05: { halfX: 29.7, halfZ: 37.3 },
-  s_03_06: { halfX: 23.7, halfZ: 24.0 },
-  s_03_07: { halfX: 19.7, halfZ: 25.2 },
-};
+> = {};
 
 /**
  * Optional per-model override that forces ads onto a specific section of
- * the building. Use this for stepped / wedding-cake GLBs where the lower
- * floors are split (e.g. s_03_04's legs) or where the visually attachable
- * wall isn't at the base. When present, the ad's y placement and the
- * wall radius are taken from here, bypassing the bucket y-rule and the
- * SMALL_BUILDING_HALF_EXTENTS lookup for that ad.
+ * the building (stepped / wedding-cake GLBs where the attachable wall isn't
+ * at the base). When present, the ad's y placement and wall radius are taken
+ * from here, bypassing the bucket y-rule and the half-extents lookup.
  *
  *   y      — world Y for the ad center (pre-scaleY; gets multiplied by
  *            b.scaleY at runtime)
@@ -140,10 +113,6 @@ const SMALL_BUILDING_HALF_EXTENTS: Record<
 const SMALL_BUILDING_AD_ATTACH: Partial<
   Record<string, { y: number; halfX: number; halfZ: number }>
 > = {
-  // s_03_04 — split-leg base, attach to the wider middle "bulge" section.
-  // Initial estimate; tweak if the ad reads as floating above/below the
-  // visible bulge.
-  s_03_04: { y: 45, halfX: 22, halfZ: 24 },
 };
 
 /**

@@ -6,6 +6,7 @@ import {
   SphereGeometry,
   Matrix4,
   LinearFilter,
+  Color,
 } from "three";
 import type { Texture, Material, BufferGeometry, Group, Mesh } from "three";
 import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -33,6 +34,103 @@ import {
   type MaterialFactoryMap,
 } from "./manifests/materials";
 
+// ── Window emissive tint variation ──────────────────────────────────────────
+// Real night cities are dominated by warm interior light with cool/neon as
+// accents; tinting every embedded emissive map the same white reads as a
+// monochrome synth render. Each embedded building material instead gets a
+// deterministic pick from this warm-dominant palette (keyed off the model key,
+// so the skyline doesn't reshuffle between loads). Tints are pre-lerped 25%
+// toward white so they recolor without muddying emissive maps that already
+// carry their own hue.
+const WINDOW_TINT_PALETTE: Array<{ color: number; weight: number }> = [
+  { color: 0xffc98c, weight: 0.3 }, // warm amber (sodium / interior)
+  { color: 0xfff2dc, weight: 0.25 }, // warm white
+  { color: 0xd8e8ff, weight: 0.15 }, // cool white
+  { color: 0x9fd8ff, weight: 0.15 }, // cyan-blue
+  { color: 0xb8ffd9, weight: 0.08 }, // pale green accent
+  { color: 0xffb3d9, weight: 0.07 }, // pink accent
+];
+
+// Brightness variance range applied on top of the tint. Baked into the
+// emissive COLOR (not emissiveIntensity) because updateEmissiveIntensities()
+// overwrites intensity from the preset on every preset change.
+const WINDOW_BRIGHTNESS_MIN = 0.7;
+const WINDOW_BRIGHTNESS_MAX = 1.45;
+
+/** Deterministic 0..1 hash from a string (FNV-1a folded to a float). */
+function hash01(str: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
+function pickWindowTint(seed: string): Color {
+  const roll = hash01(seed);
+  let cumulative = 0;
+  let picked = WINDOW_TINT_PALETTE[0].color;
+  for (const entry of WINDOW_TINT_PALETTE) {
+    cumulative += entry.weight;
+    if (roll <= cumulative) {
+      picked = entry.color;
+      break;
+    }
+  }
+  const brightness =
+    WINDOW_BRIGHTNESS_MIN +
+    hash01(seed + "#b") * (WINDOW_BRIGHTNESS_MAX - WINDOW_BRIGHTNESS_MIN);
+  return new Color(picked)
+    .lerp(new Color(0xffffff), 0.25)
+    .multiplyScalar(brightness);
+}
+
+// ── Per-INSTANCE emissive variation ──────────────────────────────────────────
+// The palette above varies emissive per MATERIAL, but every InstancedMesh copy
+// of a model shares that material — identical twins glow identically, the last
+// big "synth render" tell. This shader patch multiplies the emissive by a
+// per-instance `instanceEmissive` vec3 attribute (written alongside the
+// instance matrices in useBuildingInstances). instanceColor can't do this:
+// three only applies it to diffuse. Guarded by USE_INSTANCING so the same
+// material on a regular Mesh (asset viewer) compiles to the stock shader and
+// is untouched — important because a missing attribute would read as black.
+function patchInstanceEmissive(mat: Material): void {
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+#ifdef USE_INSTANCING
+	attribute vec3 instanceEmissive;
+	varying vec3 vInstanceEmissive;
+#endif`,
+      )
+      .replace(
+        "#include <begin_vertex>",
+        `#include <begin_vertex>
+#ifdef USE_INSTANCING
+	vInstanceEmissive = instanceEmissive;
+#endif`,
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+#ifdef USE_INSTANCING
+	varying vec3 vInstanceEmissive;
+#endif`,
+      )
+      .replace(
+        "vec3 totalEmissiveRadiance = emissive;",
+        `vec3 totalEmissiveRadiance = emissive;
+#ifdef USE_INSTANCING
+	totalEmissiveRadiance *= vInstanceEmissive;
+#endif`,
+      );
+  };
+}
+
 export type AssetManagerConfig = {
   basePath?: string;
   cityBlockSize: number;
@@ -46,6 +144,15 @@ export type AssetManagerConfig = {
     writeAsset?: (url: string, loaded: number, total: number) => void;
   };
   onLoad?: () => void;
+};
+
+export type AssetLoadOptions = {
+  /** Omit to load the complete texture manifest (used by the asset viewer). */
+  textureKeys?: Iterable<string>;
+  /** Omit to load the complete model manifest (used by the asset viewer). */
+  modelKeys?: Iterable<string>;
+  /** Omit to initialize the complete material-factory catalog. */
+  materialKeys?: Iterable<string>;
 };
 
 /**
@@ -74,6 +181,7 @@ export class AssetManager {
   private textureManifest: TextureManifest;
   private modelManifest: ModelManifest;
   private materialFactories: MaterialFactoryMap;
+  private materialSelection?: Set<string>;
 
   // Loading state
   private isLoaded = false;
@@ -129,11 +237,28 @@ export class AssetManager {
   /**
    * Load all assets defined in manifests
    */
-  load(): void {
-    console.log("AssetManager: Loading assets");
+  load(options: AssetLoadOptions = {}): void {
+    const textureKeys = options.textureKeys
+      ? new Set(options.textureKeys)
+      : undefined;
+    const modelKeys = options.modelKeys ? new Set(options.modelKeys) : undefined;
+    this.materialSelection = options.materialKeys
+      ? new Set(options.materialKeys)
+      : undefined;
 
-    this.loadTextures();
-    this.loadModels();
+    console.log(
+      `AssetManager: Loading ${textureKeys?.size ?? "all"} textures and ` +
+        `${modelKeys?.size ?? "all"} models; initializing ` +
+        `${this.materialSelection?.size ?? "all"} materials`,
+    );
+
+    this.loadTextures(textureKeys);
+    this.loadModels(modelKeys);
+    this.warnUnknownSelectionKeys(
+      "material",
+      this.materialSelection,
+      this.materialFactories,
+    );
   }
 
   /**
@@ -173,10 +298,12 @@ export class AssetManager {
   // Texture Loading
   // ===========================================================================
 
-  private loadTextures(): void {
+  private loadTextures(selectedKeys?: Set<string>): void {
     for (const [key, entry] of Object.entries(this.textureManifest)) {
+      if (selectedKeys && !selectedKeys.has(key)) continue;
       this.loadTexture(key, entry);
     }
+    this.warnUnknownSelectionKeys("texture", selectedKeys, this.textureManifest);
   }
 
   private loadTexture(key: string, entry: TextureManifestEntry): void {
@@ -186,6 +313,7 @@ export class AssetManager {
     if (entry.options) {
       const opts = entry.options;
       if (opts.colorSpace) texture.colorSpace = opts.colorSpace;
+      if (opts.flipY !== undefined) texture.flipY = opts.flipY;
       if (opts.mapping) texture.mapping = opts.mapping;
       if (opts.magFilter) texture.magFilter = opts.magFilter;
       if (opts.wrapS) texture.wrapS = opts.wrapS;
@@ -203,14 +331,29 @@ export class AssetManager {
   // Model Loading
   // ===========================================================================
 
-  private loadModels(): void {
+  private loadModels(selectedKeys?: Set<string>): void {
     for (const [key, entry] of Object.entries(this.modelManifest)) {
+      if (selectedKeys && !selectedKeys.has(key)) continue;
       if ("type" in entry && entry.format === "geometry") {
         // Procedural geometry
         this.loadProceduralGeometry(key, entry as ProceduralGeometryEntry);
       } else {
         // File-based model
         this.loadModelFromFile(key, entry as ModelManifestEntry);
+      }
+    }
+    this.warnUnknownSelectionKeys("model", selectedKeys, this.modelManifest);
+  }
+
+  private warnUnknownSelectionKeys(
+    kind: "texture" | "model" | "material",
+    selectedKeys: Set<string> | undefined,
+    manifest: TextureManifest | ModelManifest | MaterialFactoryMap,
+  ): void {
+    if (!selectedKeys || !import.meta.env.DEV) return;
+    for (const key of selectedKeys) {
+      if (!(key in manifest)) {
+        console.warn(`AssetManager: Unknown ${kind} key requested: ${key}`);
       }
     }
   }
@@ -349,12 +492,12 @@ export class AssetManager {
         const materialKey = `__embedded_${modelKey}`;
 
         if (Array.isArray(embeddedMaterial)) {
-          for (const mat of embeddedMaterial) {
-            this.enhanceEmbeddedMaterial(mat);
-          }
+          embeddedMaterial.forEach((mat, i) => {
+            this.enhanceEmbeddedMaterial(mat, `${modelKey}:${i}`);
+          });
           this.materials.set(materialKey, embeddedMaterial);
         } else {
-          this.enhanceEmbeddedMaterial(embeddedMaterial);
+          this.enhanceEmbeddedMaterial(embeddedMaterial, `${modelKey}:0`);
           this.materials.set(materialKey, embeddedMaterial);
         }
       }
@@ -406,9 +549,9 @@ export class AssetManager {
 
     // Enhance and store all materials
     const materialKey = `__embedded_${modelKey}`;
-    for (const mat of materials) {
-      this.enhanceEmbeddedMaterial(mat);
-    }
+    materials.forEach((mat, i) => {
+      this.enhanceEmbeddedMaterial(mat, `${modelKey}:${i}`);
+    });
     this.materials.set(materialKey, materials);
 
     console.log(
@@ -422,7 +565,7 @@ export class AssetManager {
    * Enhance embedded GLB materials to work better with scene lighting
    * Adjusts PBR properties to make materials more visible in low-light scenes
    */
-  private enhanceEmbeddedMaterial(material: Material): void {
+  private enhanceEmbeddedMaterial(material: Material, tintSeed?: string): void {
     // Check if it's a PBR material (MeshStandardMaterial or MeshPhysicalMaterial)
     if ("roughness" in material && "metalness" in material) {
       const mat = material as any;
@@ -435,8 +578,13 @@ export class AssetManager {
 
       // Normalize emissive for embedded materials so preset system can control them
       if (mat.emissiveMap && mat.emissiveIntensity !== undefined) {
-        // Set consistent white emissive color - the map provides color variation
-        mat.emissive = mat.emissive || 0xffffff;
+        // Per-building window tint + brightness from the warm-dominant palette;
+        // falls back to neutral white when no seed is available.
+        if (tintSeed && mat.emissive?.isColor) {
+          mat.emissive.copy(pickWindowTint(tintSeed));
+        } else {
+          mat.emissive = mat.emissive || 0xffffff;
+        }
         // Normalize base intensity to 1.0 - the preset system will multiply this
         // by the category multiplier from BASE_EMISSIVE_INTENSITIES
         mat.emissiveIntensity = 1.0;
@@ -447,9 +595,26 @@ export class AssetManager {
         mat.emissiveMap.minFilter = LinearFilter;
         mat.emissiveMap.magFilter = LinearFilter;
         mat.emissiveMap.needsUpdate = true;
+
+        // Per-instance emissive variation when this material is instanced
+        patchInstanceEmissive(material);
       } else if ("emissiveIntensity" in mat) {
         // Even without a map, normalize the intensity for consistent preset control
         mat.emissiveIntensity = 1.0;
+      }
+
+      // Apply anisotropic filtering to the surface maps so they don't shimmer /
+      // grain at grazing angles or distance (e.g. the rooftop deck receding to
+      // the horizon). Set before first upload so it takes effect.
+      for (const key of [
+        "map",
+        "normalMap",
+        "roughnessMap",
+        "metalnessMap",
+        "aoMap",
+      ]) {
+        const tex = mat[key];
+        if (tex) tex.anisotropy = this.textureAnisotropy;
       }
     }
 
@@ -530,6 +695,7 @@ export class AssetManager {
   private initializeMaterials(): void {
     // Materials are created after textures are loaded
     for (const [key, factory] of Object.entries(this.materialFactories)) {
+      if (this.materialSelection && !this.materialSelection.has(key)) continue;
       const material = factory(
         (texKey) => this.textures.get(texKey),
         this.materialContext,
@@ -730,8 +896,8 @@ export class LegacyAssetManager {
     this.manager.setPath(path);
   }
 
-  load(): void {
-    this.manager.load();
+  load(options?: AssetLoadOptions): void {
+    this.manager.load(options);
   }
 
   getTexture(key: string) {

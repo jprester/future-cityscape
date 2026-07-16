@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "name": "commercial-pilot-01",
+  "description": "Low-poly stepped commercial tower used to validate atlas UV regions.",
+  "material": {
+    "name": "commercial_atlas_v1",
+    "roughness": 0.62,
+    "metallic": 0.12,
+    "emissiveStrength": 1.4,
+    "normalStrength": 0.55
+  },
+  "masses": [
+    {
+      "name": "podium",
+      "center": [0, 0],
+      "size": [48, 36, 24],
+      "bottom": 0,
+      "regions": {
+        "front": "facade_06",
+        "right": "facade_03",
+        "back": "facade_06",
+        "left": "facade_03",
+        "top": "roof_dark_metal"
+      }
+    },
+    {
+      "name": "lower_tower",
+      "center": [0, 0],
+      "size": [40, 30, 72],
+      "bottom": 24,
+      "regions": {
+        "front": "facade_01",
+        "right": "facade_02",
+        "back": "facade_01",
+        "left": "facade_02",
+        "top": "roof_weathered_concrete"
+      }
+    },
+    {
+      "name": "upper_tower",
+      "center": [0, 0],
+      "size": [30, 24, 64],
+      "bottom": 96,
+      "regions": {
+        "front": "facade_04",
+        "right": "facade_07",
+        "back": "facade_04",
+        "left": "facade_07",
+        "top": "roof_weathered_concrete"
+      }
+    },
+    {
+      "name": "service_core",
+      "center": [0, 0],
+      "size": [12, 10, 8],
+      "bottom": 160,
+      "regions": {
+        "front": "service_wall",
+        "right": "mechanical_panels",
+        "back": "service_wall",
+        "left": "mechanical_panels",
+        "top": "roof_dark_metal"
+      }
+    }
+  ],
+  "props": [
+    {
+      "name": "hvac_nw",
+      "center": [-10, 7],
+      "size": [5, 4, 2.5],
+      "bottom": 160,
+      "regions": {
+        "front": "hvac_louver_bank",
+        "right": "mechanical_panels",
+        "back": "hvac_louver_bank",
+        "left": "mechanical_panels",
+        "top": "hvac_fan_array"
+      }
+    },
+    {
+      "name": "hvac_ne",
+      "center": [10, 7],
+      "size": [5, 4, 2.5],
+      "bottom": 160,
+      "regions": {
+        "front": "hvac_louver_bank",
+        "right": "mechanical_panels",
+        "back": "hvac_louver_bank",
+        "left": "mechanical_panels",
+        "top": "hvac_fan_array"
+      }
+    },
+    {
+      "name": "hvac_sw",
+      "center": [-10, -7],
+      "size": [5, 4, 2.5],
+      "bottom": 160,
+      "regions": {
+        "front": "hvac_louver_bank",
+        "right": "mechanical_panels",
+        "back": "hvac_louver_bank",
+        "left": "mechanical_panels",
+        "top": "hvac_fan_array"
+      }
+    },
+    {
+      "name": "hvac_se",
+      "center": [10, -7],
+      "size": [5, 4, 2.5],
+      "bottom": 160,
+      "regions": {
+        "front": "hvac_louver_bank",
+        "right": "mechanical_panels",
+        "back": "hvac_louver_bank",
+        "left": "mechanical_panels",
+        "top": "hvac_fan_array"
+      }
+    }
+  ],
+  "preview": {
+    "resolution": 900,
+    "camera": [190, -220, 145],
+    "target": [0, 0, 80]
+  }
+}

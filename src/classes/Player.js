@@ -1,17 +1,14 @@
 import { PerspectiveCamera, Object3D, Vector3 } from "three";
 import { frameFactor, smoothingFactor } from "../utils";
-import {
-  HUMAN_EYE_HEIGHT_UNITS,
-  MIN_EYE_HEIGHT_METERS,
-  MAX_EYE_HEIGHT_METERS,
-  meters,
-} from "../config/scale";
+import { HUMAN_EYE_HEIGHT_UNITS } from "../config/scale";
 
 class Player {
   constructor(params) {
     // params
 
     this.controller = params.controller;
+    // Game reference — used to query the collider for the surface underfoot.
+    this.game = params.game;
 
     // settings
 
@@ -69,12 +66,20 @@ class Player {
     this.noise_shake = new Perlin();
     this.noise_shake.noiseDetail(8, 0.5);
 
+    // The velocity model (accel/decel/max-speed) still produces the per-frame
+    // horizontal displacement; collision + gravity now live in the Rapier
+    // character controller (see PhysicsWorld + Player.update).
     this.velocity = new Vector3();
     this.move_max_speed = 0;
     this.move_max_speed_current = 0;
   }
 
   update(delta = 1 / 60) {
+    // Clamp delta so a frame hitch / backgrounded tab (huge delta) can't fling
+    // the player or overshoot gravity through a collider — cap the simulated
+    // step at ~1/20 s.
+    if (delta > 0.05) delta = 0.05;
+
     // Normalized frame factor: 1.0 at 60fps. Linear per-frame increments are
     // multiplied by `f`; exponential smoothing uses smoothingFactor(rate, f).
     // Mouse-look is driven by physical mouse deltas, so it stays unscaled.
@@ -176,27 +181,21 @@ class Player {
       this.move_max_speed_current -= this.move_accel * f;
     this.velocity.clampLength(0, this.move_max_speed_current);
 
-    /*--- UPDATE POSITION ---*/
+    /*--- UPDATE POSITION via RAPIER CHARACTER CONTROLLER ---*/
 
-    // x, z — movement speed scales with altitude (fly faster up high), but is
-    // floored at 1x so street-level walking stays a normal pace instead of
-    // crawling (the raw height factor is ~0.03 at human eye height).
-    const heightSpeedFactor = Math.max(this.body.position.y * 0.01, 1.0);
-    this.body.position.x += this.velocity.x * heightSpeedFactor * f;
-    this.body.position.z += this.velocity.z * heightSpeedFactor * f;
-
-    // y (altitude change is multiplicative per frame -> raise to the f power)
-    if (this.controller.key_r) {
-      this.body.position.y *= Math.pow(1.02, f);
+    // Collision is handled by Rapier: the per-frame velocity (above) becomes a
+    // desired horizontal displacement, which the kinematic capsule sweeps
+    // against the rooftop's fixed colliders (floor + edge walls + props). That
+    // resolves edges/walls/props in one robust step — gravity, ground-snapping,
+    // and "can't walk off the roof" all fall out of the controller. The eye
+    // position it returns drives the camera (set below / in Player setup).
+    const physics = this.game && this.game.physics;
+    if (physics && physics.ready) {
+      const eye = physics.move(this.velocity.x * f, this.velocity.z * f, delta);
+      if (eye) {
+        this.body.position.set(eye.x, eye.y, eye.z);
+      }
     }
-    if (this.controller.key_f) {
-      this.body.position.y /= Math.pow(1.02, f);
-    }
-    // Altitude limits in real meters: ~0.9 m (crouch) up to ~500 m (flight).
-    const minY = meters(MIN_EYE_HEIGHT_METERS);
-    const maxY = meters(MAX_EYE_HEIGHT_METERS);
-    if (this.body.position.y < minY) this.body.position.y = minY;
-    if (this.body.position.y > maxY) this.body.position.y = maxY;
 
     /*--- UPDATE AUDIO ---*/
 

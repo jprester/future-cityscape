@@ -1,4 +1,5 @@
 import type { EmissiveMultipliers, ModelManifestEntry } from "../assets/types";
+import { COMMERCIAL_ATLAS_MATERIAL_KEY } from "./commercialBuildingKit";
 
 // ============================================================================
 // Types
@@ -11,6 +12,8 @@ type BuildingModelSource =
       path: string;
       scale?: number;
       emissiveBase?: number;
+      /** External material used by a geometry-only GLB. Omit for embedded PBR. */
+      materialKey?: string;
     };
 
 export type BuildingVariant = {
@@ -21,6 +24,18 @@ export type BuildingVariant = {
   source?: BuildingModelSource;
   /** Default rotation offset in radians applied to every instance of this model */
   rotation?: { x?: number; y?: number; z?: number };
+  /**
+   * Footprint in city-block SLOTS (a block is an 8×8 slot grid, each slot =
+   * CITY_BLOCK_SIZE/8 = 16 u). `w` runs along X, `d` along Z, both at the
+   * model's default (0°) rotation. Used by the residential slot-packing placer
+   * in generateLayout.ts to reserve space so buildings never overlap. Sized as
+   * ceil(naturalDimension / slot) from the GLB's measured bounding box, so the
+   * building always fits inside its reserved region with the leftover read as
+   * yard/alley/plaza gaps. Only residential variants set this today.
+   */
+  footprint?: { w: number; d: number };
+  /** Keep an asset visible in the viewer without adding it to generated cities. */
+  placeable?: boolean;
 };
 
 export type BuildingSeries = {
@@ -32,215 +47,318 @@ export type BuildingSeries = {
 // ============================================================================
 // Registry Data
 // ============================================================================
+//
+// The scene has exactly FOUR building categories, all GLB models with embedded
+// materials, each living in its own subfolder under models/buildings/:
+//
+//   • residential — footprint slot-packed per block  (models/buildings/residential)
+//   • commercial  — 4 per city block, noise-picked   (models/buildings/commercial)
+//   • skyscraper  — 1 per block, each variant placed AT MOST ONCE in the scene
+//   • tower       — 1 per block, each variant placed AT MOST ONCE in the scene
+//
+// Placement logic lives in cityLayouts/generateLayout.ts. The old number-based
+// series (s_01/s_02/s_03 small, s_04 large, s_05 tower, s_06 slim, landmarks)
+// were retired — keys are now named by category. Runtime classification
+// elsewhere (smoke, wall ads, asset viewer) keys off the category PREFIX of the
+// model key (`residential_`, `commercial_`, `skyscraper_`, `tower_`), so keep
+// that prefix when adding variants.
 
-// Small buildings — used for asset pipeline derivation ONLY.
-// Runtime placement is driven by the city template in generateLayout.ts.
-const SMALL_SERIES: BuildingSeries[] = [
-  {
-    // Residential series
-    id: "01",
-    ads: ["ads_s_01_01", "ads_s_01_02"],
-    variants: [
-      { key: "s_01_01", weight: 1 },
-      { key: "s_01_02", weight: 1 },
-      { key: "s_01_03", weight: 1 },
-    ],
-  },
-  {
-    // Commercial series
-    id: "02",
-    ads: ["ads_s_02_01", "ads_s_02_02"],
-    variants: [
-      { key: "s_02_01", weight: 1 },
-      { key: "s_02_02", weight: 1 },
-      { key: "s_02_03", weight: 1 },
-    ],
-  },
-  {
-    // Industrial series
-    id: "03",
-    ads: ["ads_s_03_01", "ads_s_03_02"],
-    variants: [
-      {
-        key: "s_03_01",
-        weight: 1,
-      },
-      { key: "s_03_02", weight: 1 },
-      { key: "s_03_03", weight: 1 },
-      {
-        key: "s_03_04",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/s_03_04-new-building.glb",
-          emissiveBase: 0.5,
-        },
-      },
-      {
-        key: "s_03_05",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/s_03_05-new-building.glb",
-          emissiveBase: 0.7,
-        },
-      },
-      {
-        key: "s_03_06",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/s_03_06-new-building.glb",
-          emissiveBase: 0.7,
-        },
-      },
-      {
-        key: "s_03_07",
-        weight: 1,
-        source: {
-          format: "glb",
-          path: "models/s_03_07-new-building.glb",
-          emissiveBase: 0.7,
-        },
-      },
-    ],
-  },
-];
-
-// Large buildings — used for both asset derivation AND runtime selection
-export const LARGE_SERIES: BuildingSeries = {
-  id: "04",
-  ads: ["ads_s_04_01", "ads_s_04_02", "ads_s_04_03", "ads_s_04_04"],
+// ── Residential ─────────────────────────────────────────────────────────────
+// The 2026 "cyberpunk residential" set — 8 GLB homes at human-reference scale
+// (~12–43 u wide, ~30–90 u tall), i.e. small relative to the 128 u block. So
+// residential blocks are packed with a footprint slot system (see
+// generateLayout.ts `packResidentialBlock`) that drops MANY of them per block
+// instead of the old fixed 2×2-per-block grid. Each variant declares its
+// `footprint` in 8×8 block slots (slot = 16 u), sized ceil(naturalDim / 16)
+// from the GLB's measured bounding box (W×D, height in comments). These replaced
+// the earlier `2026-residential-building-*` models (still on disk, unreferenced).
+export const RESIDENTIAL_SERIES: BuildingSeries = {
+  id: "residential",
+  ads: ["ads_s_01_01", "ads_s_01_02"],
   variants: [
-    { key: "s_04_01", weight: 22.5 },
-    { key: "s_04_02", weight: 22.5 },
-    // { key: "s_04_03", weight: 22.5 },
     {
-      key: "s_04_03",
-      weight: 22.5,
+      // W≈35  D≈21  H≈44 — wide low-rise
+      key: "residential_01",
+      weight: 1,
+      footprint: { w: 3, d: 2 },
       source: {
         format: "glb",
-        path: "models/sci-fi-corporate-building.glb",
-        emissiveBase: 2.0,
+        path: "models/buildings/residential/cyberpunk-residential-building-1.glb",
+        emissiveBase: 0.8,
       },
     },
-    // {
-    //   key: "s_04_04",
-    //   weight: 5,
-    //   source: {
-    //     format: "glb",
-    //     path: "models/glowing-industrial-building.glb",
-    //     emissiveBase: 1.5,
-    //   },
-    // },
-    // {
-    //   key: "s_04_07",
-    //   weight: 20,
-    //   source: {
-    //     format: "glb",
-    //     path: "models/brutalist-skyscraper-4.glb",
-    //     scale: 3.5,
-    //     emissiveBase: 2.0,
-    //   },
-    // },
-  ],
-};
-
-// Tower buildings — used for both asset derivation AND runtime selection
-export const TOWER_SERIES: BuildingSeries = {
-  id: "05",
-  ads: ["ads_s_05_01", "ads_s_05_02", "ads_s_05_03", "ads_s_05_04"],
-  variants: [
-    { key: "s_05_01", weight: 31.7 },
-    { key: "s_05_03", weight: 31.6 },
     {
-      key: "s_05_04",
-      weight: 31.7,
+      // W≈23  D≈13  H≈43 — compact block
+      key: "residential_02",
+      weight: 1,
+      footprint: { w: 2, d: 1 },
       source: {
         format: "glb",
-        path: "models/new-massive-skyscraper.glb",
-        scale: 1.7,
-        emissiveBase: 2.0,
+        path: "models/buildings/residential/cyberpunk-residential-building-2.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      // W≈26  D≈17  H≈65 — mid-rise block
+      key: "residential_03",
+      weight: 1,
+      footprint: { w: 2, d: 2 },
+      source: {
+        format: "glb",
+        path: "models/buildings/residential/cyberpunk-residential-building-3.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      // W≈18  D≈18  H≈89 — slim high-rise (tallest of the set)
+      key: "residential_04",
+      weight: 1,
+      footprint: { w: 2, d: 2 },
+      source: {
+        format: "glb",
+        path: "models/buildings/residential/cyberpunk-residential-building-4.glb",
+        emissiveBase: 0.8,
+      },
+    },
+    {
+      // W≈19  D≈13  H≈30 — small low-rise
+      key: "residential_05",
+      weight: 1,
+      footprint: { w: 2, d: 1 },
+      source: {
+        format: "glb",
+        path: "models/buildings/residential/cyberpunk-residential-building-5.glb",
+        emissiveBase: 0.7,
+      },
+    },
+    {
+      // W≈16  D≈8  H≈35 — very narrow low-rise
+      key: "residential_06",
+      weight: 1,
+      footprint: { w: 1, d: 1 },
+      source: {
+        format: "glb",
+        path: "models/buildings/residential/cyberpunk-residential-building-6.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      // W≈43  D≈15  H≈46 — long slab block
+      key: "residential_07",
+      weight: 1,
+      footprint: { w: 3, d: 1 },
+      source: {
+        format: "glb",
+        path: "models/buildings/residential/cyberpunk-residential-building-7.glb",
+        emissiveBase: 0.8,
+      },
+    },
+    {
+      // W≈12  D≈10  H≈42 — tiny slim tower
+      key: "residential_08",
+      weight: 1,
+      footprint: { w: 1, d: 1 },
+      source: {
+        format: "glb",
+        path: "models/buildings/residential/cyberpunk-residential-building-8.glb",
+        emissiveBase: 0.9,
+        // scale: 1.2, // slightly taller than the measured bounding box
       },
     },
   ],
 };
 
-// Slim tower buildings — tall, narrow footprint (same 2x2 sub-slot as small buildings).
-// Downtown-exclusive: only placed in the downtown district by the finite city generator.
-// Use embedded GLB materials. Adding a new slim tower = one entry here.
-export const SLIM_TOWER_SERIES: BuildingVariant[] = [
-  {
-    key: "s_06_01",
-    weight: 1,
-    source: {
-      format: "glb",
-      path: "models/brutalist-tower.glb",
-      scale: 1,
-      emissiveBase: 2.0,
+// ── Commercial ────────────────────────────────────────────────────────────────
+// Mid-rise GLB blocks (~32–65 u wide, ~100–220 u tall). 4 per commercial block.
+export const COMMERCIAL_SERIES: BuildingSeries = {
+  id: "commercial",
+  ads: ["ads_s_02_01", "ads_s_02_02"],
+  variants: [
+    // {
+    //   key: "commercial_01",
+    //   weight: 1,
+    //   source: {
+    //     format: "glb",
+    //     path: "models/buildings/commercial/2026-commercial-building-1.glb",
+    //     emissiveBase: 0.9,
+    //   },
+    // },
+    {
+      key: "commercial_02",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-2.glb",
+        emissiveBase: 0.9,
+      },
     },
-  },
-  {
-    key: "s_06_02",
-    weight: 1,
-    source: {
-      format: "glb",
-      path: "models/dark_skyscraper_new2.glb",
-      scale: 1,
-      emissiveBase: 2.0,
+    {
+      key: "commercial_03",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-3.glb",
+        emissiveBase: 0.9,
+      },
     },
-  },
-  {
-    key: "s_06_03",
-    weight: 1,
-    source: {
-      format: "glb",
-      path: "models/ny-office-building.glb",
-      scale: 1,
-      emissiveBase: 2.0,
+    {
+      key: "commercial_04",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-4.glb",
+        emissiveBase: 0.9,
+      },
     },
-  },
-];
+    {
+      key: "commercial_05",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-5.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    // {
+    //   key: "commercial_06",
+    //   weight: 1,
+    //   source: {
+    //     format: "glb",
+    //     path: "models/buildings/commercial/2026-commercial-building-6.glb",
+    //     emissiveBase: 0.9,
+    //   },
+    // },
+    {
+      key: "commercial_07",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-7.glb",
+        emissiveBase: 0.7,
+      },
+    },
+    {
+      key: "commercial_08",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-8.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      key: "commercial_09",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-9.glb",
+        emissiveBase: 1,
+      },
+    },
+    {
+      key: "commercial_10",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-10.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      key: "commercial_11",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-11.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      key: "commercial_12",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-12.glb",
+        emissiveBase: 0.9,
+      },
+    },
+    {
+      key: "commercial_13",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-13.glb",
+        emissiveBase: 0.9,
+        scale: 1,
+      },
+    },
+    {
+      key: "commercial_14",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-14.glb",
+        emissiveBase: 0.9,
+        scale: 1,
+      },
+    },
+    {
+      key: "commercial_15",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial/2026-commercial-building-15.glb",
+        emissiveBase: 0.9,
+        scale: 0.8,
+      },
+    },
+    {
+      key: "commercial_16",
+      weight: 1,
+      placeable: false,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-wide-slab-01.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+    {
+      key: "commercial_17",
+      weight: 1,
+      placeable: false,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-stepped-tower-01.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+    {
+      key: "commercial_18",
+      weight: 1,
+      placeable: false,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-slim-tower-01.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+  ],
+};
 
-// Landmark buildings — unique high-quality assets, one instance per type per city.
-// Placed in the downtown zone by the layout generator (guaranteed, noise-driven position).
-// Adding a new landmark = one entry here. No other changes needed.
-export const LANDMARK_SERIES: BuildingVariant[] = [
-  {
-    key: "landmark_01",
-    weight: 1,
-    source: {
-      format: "glb",
-      path: "models/hero-skyscraper.glb",
-      scale: 1.4,
-      emissiveBase: 1.0,
-    },
-  },
-  {
-    key: "landmark_02",
-    weight: 1,
-    source: {
-      format: "glb",
-      path: "models/sci-fi-building-9_1.glb",
-      emissiveBase: 2.0,
-    },
-  },
-];
-
-// ── Concentric-city series (finite mode only) ──────────────────────────────
-
-// Skyscrapers — mid-to-tall buildings for financial/business zones.
-// All use embedded GLB materials. Adding a new skyscraper = one entry here.
+// ── Skyscrapers ───────────────────────────────────────────────────────────────
+// Mid-to-tall financial/business towers. One variant per block, placed at most
+// once each (the generator draws from a de-duplicated pool). Some variants point
+// at the same GLB on purpose — the dedupe keeps only the first.
 export const SKYSCRAPER_SERIES: BuildingSeries = {
   id: "skyscraper",
-  ads: ["ads_s_04_01", "ads_s_04_02", "ads_s_04_03", "ads_s_04_04"],
+  ads: [],
   variants: [
     {
       key: "skyscraper_01",
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/2-cali-plaza-skyscraper.glb",
+        path: "models/buildings/skyscrapers/2-cali-plaza-skyscraper.glb",
         emissiveBase: 0.8,
       },
     },
@@ -249,7 +367,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/cylinder-building.glb",
+        path: "models/buildings/skyscrapers/cylinder-building.glb",
         emissiveBase: 1.0,
       },
     },
@@ -258,7 +376,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/dark-skyscraper.glb",
+        path: "models/buildings/skyscrapers/dark-skyscraper.glb",
         emissiveBase: 1.0,
         scale: 1,
       },
@@ -268,7 +386,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/Frankfurt_Eurotheum_LOD0.glb",
+        path: "models/buildings/skyscrapers/Frankfurt_Eurotheum_LOD0.glb",
         emissiveBase: 1.0,
       },
     },
@@ -277,7 +395,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/Frankfurt_Skyper_LOD0.glb",
+        path: "models/buildings/skyscrapers/Frankfurt_Skyper_LOD0.glb",
         emissiveBase: 1.0,
       },
     },
@@ -286,7 +404,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/AON_Center-skyscraper.glb",
+        path: "models/buildings/skyscrapers/AON_Center-skyscraper.glb",
         emissiveBase: 0.6,
       },
     },
@@ -295,8 +413,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        // path: "models/skyscrapers/quality-skyscraper-office.glb",
-        path: "models/skyscrapers/ny-office-building.glb",
+        path: "models/buildings/skyscrapers/ny-office-building.glb",
         emissiveBase: 1.5,
         scale: 1.2,
       },
@@ -306,7 +423,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/lz-skyscraper-2.glb",
+        path: "models/buildings/skyscrapers/lz-skyscraper-2.glb",
         emissiveBase: 1.0,
         scale: 1.5,
       },
@@ -316,7 +433,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/cylinder-building-2.glb",
+        path: "models/buildings/skyscrapers/cylinder-building-2.glb",
         emissiveBase: 0.5,
       },
     },
@@ -325,16 +442,18 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/quality-skyscraper-dual.glb",
+        path: "models/buildings/skyscrapers/quality-skyscraper-dual.glb",
         emissiveBase: 1.0,
+        scale: 1.6,
       },
+      rotation: { y: Math.PI * 1.5 },
     },
     {
       key: "skyscraper_11",
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/quality-skyscraper-thick.glb",
+        path: "models/buildings/skyscrapers/quality-skyscraper-thick.glb",
         emissiveBase: 0.7,
       },
     },
@@ -343,7 +462,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/dark-skyscraper.glb",
+        path: "models/buildings/skyscrapers/2026-custom-skyscraper1-bright.glb",
         emissiveBase: 1.0,
       },
     },
@@ -352,7 +471,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/dark-skyscraper.glb",
+        path: "models/buildings/skyscrapers/cylinder-building.glb",
         emissiveBase: 1.0,
       },
     },
@@ -361,7 +480,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/cylinder-building.glb",
+        path: "models/buildings/skyscrapers/triangular-high-rise.glb",
         emissiveBase: 1.0,
       },
     },
@@ -370,25 +489,26 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/skyscrapers/triangular-high-rise.glb",
+        path: "models/buildings/skyscrapers/synth-skyscraper.glb",
         emissiveBase: 1.0,
       },
     },
   ],
 };
 
-// New towers — massive downtown-only buildings for the concentric city center.
-// All use embedded GLB materials. Adding a new tower = one entry here.
-export const NEW_TOWER_SERIES: BuildingSeries = {
-  id: "new_tower",
-  ads: ["ads_s_05_01", "ads_s_05_02", "ads_s_05_03", "ads_s_05_04"],
+// ── Towers ────────────────────────────────────────────────────────────────────
+// The biggest downtown structures. One variant per block, placed at most once
+// each (de-duplicated pool, like skyscrapers).
+export const TOWER_SERIES: BuildingSeries = {
+  id: "tower",
+  ads: [],
   variants: [
     {
       key: "tower_01",
       weight: 1,
       source: {
         format: "glb",
-        path: "models/towers/cyberpunk-hightower-big-with-logo.glb",
+        path: "models/buildings/towers/cyberpunk-hightower-big-with-logo.glb",
         emissiveBase: 3.0,
       },
     },
@@ -397,7 +517,7 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/towers/cyberpunk-hightower-small.glb",
+        path: "models/buildings/towers/cyberpunk-hightower-small.glb",
         emissiveBase: 2.0,
       },
     },
@@ -406,7 +526,7 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/towers/cyberpunk-skyscraper-top-ads.glb",
+        path: "models/buildings/towers/cyberpunk-skyscraper-top-ads.glb",
         emissiveBase: 2.0,
       },
     },
@@ -415,7 +535,7 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/towers/cyerpunk-light-show-skyscraper.glb",
+        path: "models/buildings/towers/cyerpunk-light-show-skyscraper.glb",
         emissiveBase: 2.0,
       },
       rotation: { y: Math.PI / 2 },
@@ -425,7 +545,7 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/towers/quality-skyscraper-rectangular-big.glb",
+        path: "models/buildings/towers/quality-skyscraper-rectangular-big.glb",
         emissiveBase: 1.0,
         scale: 1,
       },
@@ -435,17 +555,16 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/towers/lz-tower-4.glb",
+        path: "models/buildings/towers/lz-tower-4.glb",
         emissiveBase: 2.0,
       },
-      rotation: { y: Math.PI / 2 },
     },
     {
       key: "tower_07",
       weight: 1,
       source: {
         format: "glb",
-        path: "models/towers/sci-fi-building-9_1.glb",
+        path: "models/buildings/towers/sci-fi-building-9_1.glb",
         scale: 1.4,
         emissiveBase: 1.0,
       },
@@ -455,7 +574,7 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/towers/sci-fi-corporate-building.glb",
+        path: "models/buildings/towers/sci-fi-corporate-building.glb",
         emissiveBase: 1,
         scale: 1.7,
       },
@@ -465,8 +584,7 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        // path: "models/towers/rounded-scifi-tower.glb",
-        path: "models/skyscrapers/quality-skyscraper-curved.glb",
+        path: "models/buildings/skyscrapers/quality-skyscraper-curved.glb",
         emissiveBase: 2.0,
       },
       rotation: { y: Math.PI / 2 },
@@ -476,7 +594,7 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/towers/sci-fi-brutalist-tower-with-ads.glb",
+        path: "models/buildings/towers/sci-fi-brutalist-tower-with-ads.glb",
         emissiveBase: 2.0,
       },
     },
@@ -485,8 +603,8 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/towers/new-massive-skyscraper.001.glb",
-        emissiveBase: 2.0,
+        path: "models/buildings/towers/new-massive-skyscraper.001.glb",
+        emissiveBase: 1.0,
       },
     },
     {
@@ -494,7 +612,7 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/towers/hero-skyscraper.glb",
+        path: "models/buildings/towers/hero-skyscraper.glb",
         emissiveBase: 1.0,
         scale: 1.2,
       },
@@ -502,20 +620,20 @@ export const NEW_TOWER_SERIES: BuildingSeries = {
   ],
 };
 
+// All four categories, in one place for the asset-pipeline helpers.
+const ALL_SERIES: BuildingSeries[] = [
+  RESIDENTIAL_SERIES,
+  COMMERCIAL_SERIES,
+  SKYSCRAPER_SERIES,
+  TOWER_SERIES,
+];
+
 // ============================================================================
 // Asset Pipeline Helpers
 // ============================================================================
 
 function getAllVariants(): BuildingVariant[] {
-  return [
-    ...SMALL_SERIES.flatMap((s) => s.variants),
-    ...LARGE_SERIES.variants,
-    ...TOWER_SERIES.variants,
-    ...SLIM_TOWER_SERIES,
-    ...LANDMARK_SERIES,
-    ...SKYSCRAPER_SERIES.variants,
-    ...NEW_TOWER_SERIES.variants,
-  ];
+  return ALL_SERIES.flatMap((s) => s.variants);
 }
 
 /** Default rotation offsets per model key (only includes models with rotation defined) */
@@ -545,7 +663,7 @@ export function getAllModelKeys(): string[] {
 export function getEmbeddedMaterialKeys(): Set<string> {
   const set = new Set<string>();
   for (const v of getAllVariants()) {
-    if (v.source?.format === "glb") set.add(v.key);
+    if (v.source?.format === "glb" && !v.source.materialKey) set.add(v.key);
   }
   return set;
 }
@@ -560,7 +678,7 @@ export function getEmbeddedEmissiveEntries(): Record<
     { category: keyof EmissiveMultipliers; base: number }
   > = {};
   for (const v of getAllVariants()) {
-    if (v.source?.format === "glb") {
+    if (v.source?.format === "glb" && !v.source.materialKey) {
       entries[`__embedded_${v.key}`] = {
         category: "buildings",
         base: v.source.emissiveBase ?? 2.0,
@@ -583,7 +701,7 @@ export function getBuildingManifestEntries(): Record<
         format: "glb",
         options: {
           computeBVH: true,
-          useEmbeddedMaterial: true,
+          useEmbeddedMaterial: !v.source.materialKey,
           scale: v.source.scale ?? 1,
         },
       };
@@ -597,21 +715,18 @@ export function getBuildingManifestEntries(): Record<
   return entries;
 }
 
-/** Set of landmark model keys — legacy, kept for procedural mode compat */
-export function getLandmarkModelKeys(): Set<string> {
-  return new Set(LANDMARK_SERIES.map((v) => v.key));
-}
-
-/** Tower model keys for the concentric city — no instance cap */
-export function getNewTowerModelKeys(): string[] {
-  return NEW_TOWER_SERIES.variants.map((v) => v.key);
+/** External material key per geometry-only model. */
+export function getModelMaterialKeys(): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const variant of getAllVariants()) {
+    if (variant.source?.format === "glb" && variant.source.materialKey) {
+      map.set(variant.key, variant.source.materialKey);
+    }
+  }
+  return map;
 }
 
 /** All ad model keys across all series */
 export function getAllAdModelKeys(): string[] {
-  return [
-    ...SMALL_SERIES.flatMap((s) => s.ads),
-    ...LARGE_SERIES.ads,
-    ...TOWER_SERIES.ads,
-  ];
+  return ALL_SERIES.flatMap((s) => s.ads);
 }

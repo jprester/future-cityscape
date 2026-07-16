@@ -1,9 +1,14 @@
 import { useRef, useEffect, useCallback, useState } from "react";
-import { InstancedMesh, Object3D } from "three";
+import {
+  DynamicDrawUsage,
+  InstancedBufferAttribute,
+  InstancedMesh,
+  Object3D,
+} from "three";
 import type { BufferGeometry, Material } from "three";
 import {
-  getAllModelKeys,
   getEmbeddedMaterialKeys,
+  getModelMaterialKeys,
   getModelRotations,
 } from "../../config/buildingRegistry";
 
@@ -22,9 +27,6 @@ export type BuildingDescriptor = {
   blockKey: string;
 };
 
-// All building model keys — derived from building registry
-const BUILDING_MODEL_KEYS = getAllModelKeys();
-
 // All building material keys
 const BUILDING_MATERIAL_KEYS = [
   "building_01",
@@ -41,19 +43,79 @@ const BUILDING_MATERIAL_KEYS = [
 
 // Models that use embedded materials from GLB files — derived from building registry
 const MODELS_WITH_EMBEDDED_MATERIALS = getEmbeddedMaterialKeys();
+const MODEL_MATERIAL_KEYS = getModelMaterialKeys();
 
 // Per-model default rotation offsets (e.g. to correct orientation from Blender)
 const MODEL_ROTATIONS = getModelRotations();
 
-// Max instances per (model, material) combination
-const MAX_INSTANCES_PER_COMBO = 150;
+// Max VISIBLE instances per (model, material) combination. This bounds the
+// instances written per cull, not the total placed — the culler (Instanced
+// Buildings) sorts visible buildings nearest-first, so if a combo overflows this
+// cap only the farthest (most fog-obscured) copies are dropped. The dense
+// residential footprint packer drops ~15–20 small buildings per block over 8
+// variants, so a single variant can have hundreds visible at once when looking
+// across a residential district; keep generous headroom. Cost is a preallocated
+// matrix/emissive buffer per combo (~19 floats × this × ~50 combos ≈ 2 MB) — the
+// per-frame work still scales with the actual visible count, not this cap.
+const MAX_INSTANCES_PER_COMBO = 512;
 
 // Create a composite key for (model, material) pair
 function getComboKey(modelKey: string, materialKey: string): string {
   return `${modelKey}:${materialKey}`;
 }
 
-export function useBuildingInstances(assets: AssetGetter | null) {
+// ── Per-instance emissive variation ─────────────────────────────────────────
+// Instanced copies of a model share one embedded material, so without this
+// every twin glows with identical windows. Each instance gets a deterministic
+// emissive multiplier (brightness + a slight warm↔cool shift) written into an
+// `instanceEmissive` vec3 attribute that AssetManager's shader patch reads.
+// Seeded from the building's world position so the skyline is stable across
+// reloads and re-culls (instance SLOTS reshuffle every camera move, so this is
+// rewritten alongside the matrices — it must key off the building, not the slot).
+const EMISSIVE_BRIGHTNESS_MIN = 0.55;
+const EMISSIVE_BRIGHTNESS_MAX = 1.5;
+const EMISSIVE_WARM_COOL_SHIFT = 0.18;
+
+/** Deterministic 0..1 hash from a string (FNV-1a folded to a float). */
+function hash01(str: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
+const emissiveVariationCache = new WeakMap<
+  BuildingDescriptor,
+  [number, number, number]
+>();
+
+function getEmissiveVariation(
+  building: BuildingDescriptor,
+): [number, number, number] {
+  let v = emissiveVariationCache.get(building);
+  if (!v) {
+    const seed = `${Math.round(building.position.x)}|${Math.round(building.position.z)}`;
+    const brightness =
+      EMISSIVE_BRIGHTNESS_MIN +
+      hash01(seed) * (EMISSIVE_BRIGHTNESS_MAX - EMISSIVE_BRIGHTNESS_MIN);
+    // -1 (cool) .. +1 (warm)
+    const warm = (hash01(seed + "#t") - 0.5) * 2;
+    v = [
+      brightness * (1 + EMISSIVE_WARM_COOL_SHIFT * warm),
+      brightness,
+      brightness * (1 - EMISSIVE_WARM_COOL_SHIFT * warm),
+    ];
+    emissiveVariationCache.set(building, v);
+  }
+  return v;
+}
+
+export function useBuildingInstances(
+  assets: AssetGetter | null,
+  requiredModelKeys: string[],
+) {
   const instancedMeshesRef = useRef<Map<string, InstancedMesh>>(new Map());
   const initializedRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
@@ -69,7 +131,7 @@ export function useBuildingInstances(assets: AssetGetter | null) {
 
     // Create InstancedMesh for each possible (model, material) combination
     // We create them lazily - only combinations that are actually used will have instances
-    for (const modelKey of BUILDING_MODEL_KEYS) {
+    for (const modelKey of requiredModelKeys) {
       const geometry = assets.getModel(modelKey);
       if (!geometry) {
         console.warn(
@@ -92,6 +154,41 @@ export function useBuildingInstances(assets: AssetGetter | null) {
         // Create a single InstancedMesh for this model (all instances use the same embedded material)
         // Use a special combo key that maps any material to the embedded one
         const comboKey = getComboKey(modelKey, embeddedMaterialKey);
+        // Per-instance emissive multiplier, read by the AssetManager shader
+        // patch. Lives on the geometry, which is safe here because the
+        // embedded path creates exactly one InstancedMesh per model geometry
+        // (unlike the OBJ path, where one geometry is shared by 10 meshes).
+        if (!geometry.getAttribute("instanceEmissive")) {
+          const attr = new InstancedBufferAttribute(
+            new Float32Array(MAX_INSTANCES_PER_COMBO * 3).fill(1),
+            3,
+          );
+          attr.setUsage(DynamicDrawUsage);
+          geometry.setAttribute("instanceEmissive", attr);
+        }
+        const instancedMesh = new InstancedMesh(
+          geometry,
+          material,
+          MAX_INSTANCES_PER_COMBO,
+        );
+        instancedMesh.count = 0;
+        instancedMesh.frustumCulled = false;
+        instancedMesh.castShadow = true;
+        instancedMesh.receiveShadow = true;
+        instancedMeshesRef.current.set(comboKey, instancedMesh);
+        continue;
+      }
+
+      const sharedMaterialKey = MODEL_MATERIAL_KEYS.get(modelKey);
+      if (sharedMaterialKey) {
+        const material = assets.getMaterial(sharedMaterialKey);
+        if (!material) {
+          console.warn(
+            `useBuildingInstances: shared material ${sharedMaterialKey} for ${modelKey} not found`,
+          );
+          continue;
+        }
+        const comboKey = getComboKey(modelKey, sharedMaterialKey);
         const instancedMesh = new InstancedMesh(
           geometry,
           material,
@@ -137,7 +234,7 @@ export function useBuildingInstances(assets: AssetGetter | null) {
       initializedRef.current = false;
       setIsReady(false);
     };
-  }, [assets, assets?.loaded]);
+  }, [assets, assets?.loaded, requiredModelKeys]);
 
   // Update all instances based on current building descriptors
   const updateInstances = useCallback((buildings: BuildingDescriptor[]) => {
@@ -152,7 +249,7 @@ export function useBuildingInstances(assets: AssetGetter | null) {
       // For models with embedded materials, remap to use the embedded material key
       const materialKey = MODELS_WITH_EMBEDDED_MATERIALS.has(building.modelKey)
         ? `__embedded_${building.modelKey}`
-        : building.materialKey;
+        : (MODEL_MATERIAL_KEYS.get(building.modelKey) ?? building.materialKey);
       const comboKey = getComboKey(building.modelKey, materialKey);
       let list = buildingsByCombo.get(comboKey);
       if (!list) {
@@ -175,6 +272,10 @@ export function useBuildingInstances(assets: AssetGetter | null) {
         continue;
       }
 
+      const emissiveAttr = instancedMesh.geometry.getAttribute(
+        "instanceEmissive",
+      ) as InstancedBufferAttribute | undefined;
+
       for (let i = 0; i < count; i++) {
         const building = comboBuildings[i];
         const obj = tempObject.current;
@@ -195,9 +296,17 @@ export function useBuildingInstances(assets: AssetGetter | null) {
         obj.updateMatrix();
 
         instancedMesh.setMatrixAt(i, obj.matrix);
+
+        if (emissiveAttr) {
+          const [r, g, b] = getEmissiveVariation(building);
+          emissiveAttr.setXYZ(i, r, g, b);
+        }
       }
 
       instancedMesh.instanceMatrix.needsUpdate = true;
+      if (emissiveAttr) {
+        emissiveAttr.needsUpdate = true;
+      }
     }
   }, []);
 

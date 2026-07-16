@@ -40,6 +40,32 @@ export function createModelManifest(
     spotlight: {
       path: "models/spotlight.obj",
     },
+
+    // Rooftop vantage (Blender-authored GLB; replaces the procedural box visuals).
+    // `scale` shrinks the whole cap (smaller footprint + lower parapet).
+    vantage_rooftop: {
+      path: "models/rooftop/vantage-rooftop.glb",
+      format: "glb",
+      options: { useEmbeddedMaterial: true, computeBVH: false, scale: 1.2 },
+    },
+    // Rooftop vent props (placed on the deck by FiniteCityVantage). Same scale
+    // as the rooftop so they sit at the authored size. Spaces in the filenames
+    // are URL-encoded.
+    vent_01: {
+      path: "models/rooftop/Rooftop%20Vents.005.glb",
+      format: "glb",
+      options: { useEmbeddedMaterial: true, computeBVH: false, scale: 1.2 },
+    },
+    vent_02: {
+      path: "models/rooftop/Rooftop%20Vents.007.glb",
+      format: "glb",
+      options: { useEmbeddedMaterial: true, computeBVH: false, scale: 1.2 },
+    },
+    vent_03: {
+      path: "models/rooftop/Rooftop%20Vents.011.glb",
+      format: "glb",
+      options: { useEmbeddedMaterial: true, computeBVH: false, scale: 1.2 },
+    },
   };
 
   // Buildings — derived from building registry (single source of truth)

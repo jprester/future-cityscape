@@ -1,0 +1,72 @@
+{
+  "name": "commercial-stepped-tower-01",
+  "bounds": {
+    "min": [
+      -23.0,
+      -17.0,
+      0.0
+    ],
+    "max": [
+      23.0,
+      17.0,
+      183.0
+    ],
+    "dimensions": [
+      46.0,
+      34.0,
+      183.0
+    ]
+  },
+  "baseCentered": true,
+  "vertices": 550,
+  "polygons": 240,
+  "triangles": 472,
+  "uvLayers": 1,
+  "materials": 1,
+  "facade": {
+    "region": "facade_01",
+    "floorHeight": 3.4,
+    "bayWidth": 5.5,
+    "horizontalAnchor": 0.5
+  },
+  "beacons": [
+    {
+      "name": "service_core_beacon",
+      "center": [
+        0,
+        0
+      ],
+      "bottomFloor": 51,
+      "baseOffset": 7,
+      "rodHeight": 2,
+      "capRadius": 0.3
+    }
+  ],
+  "textureMaps": {
+    "diffuse": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-diffuse.png",
+    "emissive": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-emissive.png",
+    "roughness": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-roughness.png",
+    "normal": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-normal.png"
+  },
+  "atlasRegions": [
+    "beacon_red",
+    "beacon_rod_dark",
+    "facade_01",
+    "hvac_access_panel",
+    "hvac_fan_quad",
+    "hvac_louver_wide",
+    "roof_concrete_tile_a",
+    "roof_concrete_tile_b",
+    "roof_dark_metal",
+    "roof_metal_tile_a",
+    "roof_metal_tile_b",
+    "roof_weathered_concrete",
+    "service_wall_clean"
+  ],
+  "outputs": {
+    "blend": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/production/commercial-stepped-tower-01.blend",
+    "glb": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/production/commercial-stepped-tower-01.glb",
+    "preview": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/production/commercial-stepped-tower-01-preview.png",
+    "roofPreview": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/production/commercial-stepped-tower-01-roof-preview.png"
+  }
+}
