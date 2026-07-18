@@ -1,0 +1,84 @@
+{
+  "name": "commercial-concrete-frame-02",
+  "bounds": {
+    "min": [
+      -23.0,
+      -19.0,
+      0.0
+    ],
+    "max": [
+      23.0,
+      19.0,
+      147.02000427246094
+    ],
+    "dimensions": [
+      46.0,
+      38.0,
+      147.02000427246094
+    ]
+  },
+  "baseCentered": true,
+  "vertices": 524,
+  "polygons": 237,
+  "triangles": 458,
+  "uvLayers": 1,
+  "materials": 1,
+  "geometryOnly": false,
+  "facade": {
+    "region": "facade_06",
+    "floorHeight": 3.4,
+    "horizontalAnchor": 0.5
+  },
+  "beacons": [
+    {
+      "name": "left_beacon",
+      "center": [
+        -6,
+        0
+      ],
+      "bottomFloor": 41,
+      "baseOffset": 5.5,
+      "rodHeight": 1.6,
+      "capRadius": 0.26
+    },
+    {
+      "name": "right_beacon",
+      "center": [
+        6,
+        0
+      ],
+      "bottomFloor": 41,
+      "baseOffset": 5.5,
+      "rodHeight": 1.6,
+      "capRadius": 0.26
+    }
+  ],
+  "textureMaps": {
+    "diffuse": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-diffuse.png",
+    "emissive": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-emissive.png",
+    "roughness": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-roughness.png",
+    "normal": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-normal.png"
+  },
+  "atlasRegions": [
+    "beacon_red",
+    "beacon_rod_dark",
+    "facade_06",
+    "hvac_access_panel",
+    "hvac_fan_quad",
+    "hvac_louver_wide",
+    "roof_concrete_tile_a",
+    "roof_concrete_tile_b",
+    "roof_dark_metal",
+    "roof_metal_tile_a",
+    "roof_metal_tile_b",
+    "roof_weathered_concrete",
+    "service_wall_clean",
+    "structural_dark"
+  ],
+  "outputs": {
+    "blend": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/batch-02/commercial-concrete-frame-02.blend",
+    "glb": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/batch-02/commercial-concrete-frame-02.glb",
+    "preview": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/batch-02/commercial-concrete-frame-02-preview.png",
+    "roofPreview": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/batch-02/commercial-concrete-frame-02-roof-preview.png"
+  }
+}

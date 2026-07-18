@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "name": "commercial-signature-crown-02",
+  "description": "Slim magenta-glass signature tower with an open illuminated crown.",
+  "material": { "name": "commercial_atlas_v1", "roughness": 0.48, "metallic": 0.17, "emissiveStrength": 1.35, "normalStrength": 0.42 },
+  "facade": { "region": "facade_07", "floorHeight": 3.4, "horizontalAnchor": 0.5 },
+  "roof": {
+    "tileSize": 8,
+    "tiles": { "roof_dark_metal": ["roof_metal_tile_a", "roof_metal_tile_b"], "roof_weathered_concrete": ["roof_concrete_tile_a", "roof_concrete_tile_b"] },
+    "parapet": { "height": 0.85, "width": 0.5, "sideRegion": "structural_dark", "capRegion": "structural_dark" }
+  },
+  "masses": [
+    { "name": "podium", "center": [0, 0], "footprint": [40, 34], "floors": 4, "bottomFloor": 0, "roofRegion": "roof_dark_metal" },
+    { "name": "main", "center": [0, 0], "footprint": [36, 30], "floors": 18, "bottomFloor": 4, "roofRegion": "roof_weathered_concrete" },
+    { "name": "upper", "center": [0, 0], "footprint": [28, 24], "floors": 18, "bottomFloor": 22, "roofRegion": "roof_dark_metal" }
+  ],
+  "arrays": [
+    { "name": "front_light_spines", "axis": "x", "count": 3, "span": 18, "center": [0, -15.35], "size": [0.18, 0.2, 118], "bottom": 13.6, "region": "neon_magenta" }
+  ],
+  "beams": [
+    { "name": "crown_post_fl", "start": [-10, -8, 136], "end": [-8, -6, 151], "thickness": 0.55, "region": "structural_light" },
+    { "name": "crown_post_fr", "start": [10, -8, 136], "end": [8, -6, 151], "thickness": 0.55, "region": "structural_light" },
+    { "name": "crown_post_bl", "start": [-10, 8, 136], "end": [-8, 6, 151], "thickness": 0.55, "region": "structural_light" },
+    { "name": "crown_post_br", "start": [10, 8, 136], "end": [8, 6, 151], "thickness": 0.55, "region": "structural_light" },
+    { "name": "crown_top_front", "start": [-8, -6, 151], "end": [8, -6, 151], "thickness": 0.42, "region": "neon_magenta" },
+    { "name": "crown_top_back", "start": [-8, 6, 151], "end": [8, 6, 151], "thickness": 0.42, "region": "neon_magenta" },
+    { "name": "crown_top_left", "start": [-8, -6, 151], "end": [-8, 6, 151], "thickness": 0.42, "region": "neon_magenta" },
+    { "name": "crown_top_right", "start": [8, -6, 151], "end": [8, 6, 151], "thickness": 0.42, "region": "neon_magenta" }
+  ],
+  "props": [
+    { "name": "roof_core", "center": [0, 0], "size": [10, 8, 5], "bottomFloor": 40, "regions": { "front": "service_wall_clean", "right": "hvac_access_panel", "back": "service_wall_clean", "left": "hvac_access_panel", "top": "roof_metal_tile_a" } }
+  ],
+  "beacons": [
+    { "name": "crown_beacon", "center": [0, 0], "bottomFloor": 40, "baseOffset": 15, "rodHeight": 2.5, "capRadius": 0.32 }
+  ],
+  "preview": { "resolution": 900, "camera": [155, -198, 122], "target": [0, 0, 75], "roofCamera": { "camera": [85, -100, 183], "target": [0, 0, 143] } }
+}

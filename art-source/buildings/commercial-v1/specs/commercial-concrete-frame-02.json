@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "name": "commercial-concrete-frame-02",
+  "description": "Broad dark office high-rise with clean stepped masses and a restrained roof crown, ready for optional manual facade detailing.",
+  "material": { "name": "commercial_atlas_v1", "roughness": 0.64, "metallic": 0.1, "emissiveStrength": 1.2, "normalStrength": 0.52 },
+  "facade": { "region": "facade_06", "floorHeight": 3.4, "horizontalAnchor": 0.5 },
+  "roof": {
+    "tileSize": 8,
+    "tiles": { "roof_dark_metal": ["roof_metal_tile_a", "roof_metal_tile_b"], "roof_weathered_concrete": ["roof_concrete_tile_a", "roof_concrete_tile_b"] },
+    "parapet": { "height": 1, "width": 0.65, "sideRegion": "structural_dark", "capRegion": "structural_dark" }
+  },
+  "masses": [
+    { "name": "podium", "center": [0, 0], "footprint": [46, 38], "floors": 5, "bottomFloor": 0, "roofRegion": "roof_weathered_concrete" },
+    { "name": "main", "center": [0, 0], "footprint": [42, 34], "floors": 22, "bottomFloor": 5, "roofRegion": "roof_weathered_concrete" },
+    { "name": "recessed_upper", "center": [0, 0], "footprint": [34, 28], "floors": 14, "bottomFloor": 27, "sourceFloorStart": 4, "roofRegion": "roof_dark_metal" }
+  ],
+  "beams": [
+    { "name": "crown_front", "start": [-15, -14, 143], "end": [15, -14, 143], "thickness": 0.65, "region": "structural_dark" },
+    { "name": "crown_back", "start": [-15, 14, 143], "end": [15, 14, 143], "thickness": 0.65, "region": "structural_dark" },
+    { "name": "crown_left", "start": [-15, -14, 143], "end": [-15, 14, 143], "thickness": 0.65, "region": "structural_dark" },
+    { "name": "crown_right", "start": [15, -14, 143], "end": [15, 14, 143], "thickness": 0.65, "region": "structural_dark" }
+  ],
+  "props": [
+    { "name": "roof_core", "center": [0, 0], "size": [13, 9, 5.5], "bottomFloor": 41, "regions": { "front": "service_wall_clean", "right": "hvac_access_panel", "back": "service_wall_clean", "left": "hvac_access_panel", "top": "roof_metal_tile_a" } },
+    { "name": "hvac_left", "center": [-9, 5], "size": [4, 4, 2.3], "bottomFloor": 41, "regions": { "front": "hvac_louver_wide", "right": "hvac_access_panel", "back": "hvac_louver_wide", "left": "hvac_access_panel", "top": "hvac_fan_quad" } },
+    { "name": "hvac_right", "center": [9, 5], "size": [4, 4, 2.3], "bottomFloor": 41, "regions": { "front": "hvac_louver_wide", "right": "hvac_access_panel", "back": "hvac_louver_wide", "left": "hvac_access_panel", "top": "hvac_fan_quad" } }
+  ],
+  "beacons": [
+    { "name": "left_beacon", "center": [-6, 0], "bottomFloor": 41, "baseOffset": 5.5, "rodHeight": 1.6, "capRadius": 0.26 },
+    { "name": "right_beacon", "center": [6, 0], "bottomFloor": 41, "baseOffset": 5.5, "rodHeight": 1.6, "capRadius": 0.26 }
+  ],
+  "preview": { "resolution": 900, "camera": [165, -205, 120], "target": [0, 0, 70], "roofCamera": { "camera": [92, -108, 170], "target": [0, 0, 128] } }
+}

@@ -20,6 +20,11 @@ const MODEL_NAMES = [
   "commercial-wide-slab-01",
   "commercial-stepped-tower-01",
   "commercial-slim-tower-01",
+  "commercial-rounded-glass-02",
+  "commercial-tech-fins-02",
+  "commercial-concrete-frame-02",
+  "commercial-signature-crown-02",
+  "commercial-exoskeleton-02",
 ];
 
 const TEXTURE_MAPS = [

@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "name": "commercial-exoskeleton-02",
+  "description": "Dark corporate tower wrapped in a cyan-and-magenta emissive diagonal exoskeleton.",
+  "material": { "name": "commercial_atlas_v1", "roughness": 0.57, "metallic": 0.2, "emissiveStrength": 2, "normalStrength": 0.48 },
+  "facade": { "region": "facade_04", "floorHeight": 3.4, "horizontalAnchor": 0.5 },
+  "roof": {
+    "tileSize": 8,
+    "tiles": { "roof_dark_metal": ["roof_metal_tile_a", "roof_metal_tile_b"], "roof_weathered_concrete": ["roof_concrete_tile_a", "roof_concrete_tile_b"] },
+    "parapet": { "height": 0.9, "width": 0.55, "sideRegion": "structural_dark", "capRegion": "structural_dark" }
+  },
+  "masses": [
+    { "name": "podium", "center": [0, 0], "footprint": [44, 36], "floors": 4, "bottomFloor": 0, "roofRegion": "roof_dark_metal" },
+    { "name": "main", "center": [0, 0], "footprint": [42, 32], "floors": 20, "bottomFloor": 4, "roofRegion": "roof_weathered_concrete" },
+    { "name": "upper", "center": [0, 0], "footprint": [36, 28], "floors": 18, "bottomFloor": 24, "sourceFloorStart": 1, "roofRegion": "roof_dark_metal" }
+  ],
+  "arrays": [
+    { "name": "main_front_columns", "axis": "x", "count": 4, "span": 36, "center": [0, -16.12], "size": [0.48, 0.4, 66], "bottom": 14, "region": "structural_dark" },
+    { "name": "main_back_columns", "axis": "x", "count": 4, "span": 36, "center": [0, 16.12], "size": [0.48, 0.4, 66], "bottom": 14, "region": "structural_dark" },
+    { "name": "upper_front_columns", "axis": "x", "count": 4, "span": 30, "center": [0, -14.12], "size": [0.44, 0.38, 59], "bottom": 82.5, "region": "structural_dark" },
+    { "name": "upper_back_columns", "axis": "x", "count": 4, "span": 30, "center": [0, 14.12], "size": [0.44, 0.38, 59], "bottom": 82.5, "region": "structural_dark" }
+  ],
+  "beams": [
+    { "name": "front_x1a", "start": [-19, -16.45, 16], "end": [19, -16.45, 46], "thickness": 0.5, "region": "neon_cyan" },
+    { "name": "front_x1b", "start": [19, -16.45, 16], "end": [-19, -16.45, 46], "thickness": 0.5, "region": "neon_magenta" },
+    { "name": "front_x2a", "start": [-19, -16.45, 48], "end": [19, -16.45, 79], "thickness": 0.5, "region": "neon_magenta" },
+    { "name": "front_x2b", "start": [19, -16.45, 48], "end": [-19, -16.45, 79], "thickness": 0.5, "region": "neon_cyan" },
+    { "name": "front_x3a", "start": [-16, -14.45, 84], "end": [16, -14.45, 111], "thickness": 0.5, "region": "neon_cyan" },
+    { "name": "front_x3b", "start": [16, -14.45, 84], "end": [-16, -14.45, 111], "thickness": 0.5, "region": "neon_magenta" },
+    { "name": "front_x4a", "start": [-16, -14.45, 113], "end": [16, -14.45, 140], "thickness": 0.5, "region": "neon_magenta" },
+    { "name": "front_x4b", "start": [16, -14.45, 113], "end": [-16, -14.45, 140], "thickness": 0.5, "region": "neon_cyan" },
+    { "name": "back_x1a", "start": [-19, 16.45, 16], "end": [19, 16.45, 46], "thickness": 0.5, "region": "neon_magenta" },
+    { "name": "back_x1b", "start": [19, 16.45, 16], "end": [-19, 16.45, 46], "thickness": 0.5, "region": "neon_cyan" },
+    { "name": "back_x2a", "start": [-19, 16.45, 48], "end": [19, 16.45, 79], "thickness": 0.5, "region": "neon_cyan" },
+    { "name": "back_x2b", "start": [19, 16.45, 48], "end": [-19, 16.45, 79], "thickness": 0.5, "region": "neon_magenta" },
+    { "name": "back_x3a", "start": [-16, 14.45, 84], "end": [16, 14.45, 111], "thickness": 0.5, "region": "neon_magenta" },
+    { "name": "back_x3b", "start": [16, 14.45, 84], "end": [-16, 14.45, 111], "thickness": 0.5, "region": "neon_cyan" },
+    { "name": "back_x4a", "start": [-16, 14.45, 113], "end": [16, 14.45, 140], "thickness": 0.5, "region": "neon_cyan" },
+    { "name": "back_x4b", "start": [16, 14.45, 113], "end": [-16, 14.45, 140], "thickness": 0.5, "region": "neon_magenta" }
+  ],
+  "props": [
+    { "name": "roof_core", "center": [0, 0], "size": [13, 9, 6], "bottomFloor": 42, "regions": { "front": "service_wall_clean", "right": "hvac_access_panel", "back": "service_wall_clean", "left": "hvac_access_panel", "top": "roof_metal_tile_a" } },
+    { "name": "hvac_left", "center": [-9, 5], "size": [4, 4, 2.4], "bottomFloor": 42, "regions": { "front": "hvac_louver_wide", "right": "hvac_access_panel", "back": "hvac_louver_wide", "left": "hvac_access_panel", "top": "hvac_fan_quad" } },
+    { "name": "hvac_right", "center": [9, 5], "size": [4, 4, 2.4], "bottomFloor": 42, "regions": { "front": "hvac_louver_wide", "right": "hvac_access_panel", "back": "hvac_louver_wide", "left": "hvac_access_panel", "top": "hvac_fan_quad" } }
+  ],
+  "beacons": [
+    { "name": "core_beacon", "center": [0, 0], "bottomFloor": 42, "baseOffset": 6, "rodHeight": 2.2, "capRadius": 0.3 }
+  ],
+  "preview": { "resolution": 900, "camera": [165, -205, 122], "target": [0, 0, 73], "roofCamera": { "camera": [92, -108, 178], "target": [0, 0, 134] } }
+}

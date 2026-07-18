@@ -195,6 +195,30 @@ const subregionDefinitions = [
 ];
 const generatedSwatches = [
   {
+    id: "structural_dark",
+    type: "metal-swatch",
+    color: "#202a34",
+    pixel: { x: 3804, y: 4048, width: 36, height: 36 },
+  },
+  {
+    id: "structural_light",
+    type: "metal-swatch",
+    color: "#8c9aaa",
+    pixel: { x: 3852, y: 4048, width: 36, height: 36 },
+  },
+  {
+    id: "neon_cyan",
+    type: "emissive",
+    color: "#16dff5",
+    pixel: { x: 3900, y: 4048, width: 36, height: 36 },
+  },
+  {
+    id: "neon_magenta",
+    type: "emissive",
+    color: "#ff43d1",
+    pixel: { x: 3948, y: 4048, width: 36, height: 36 },
+  },
+  {
     id: "beacon_rod_dark",
     type: "metal-swatch",
     color: "#151a1f",

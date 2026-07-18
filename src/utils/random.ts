@@ -18,6 +18,25 @@ export function pickFromNoise<T>(array: T[], noise: number): T {
   return array[Math.min(index, array.length - 1)];
 }
 
+/** Pick a weighted item using a deterministic 0..1 noise sample. */
+export function pickWeightedFromNoise<T extends { weight: number }>(
+  array: T[],
+  noise: number,
+): T {
+  const totalWeight = array.reduce(
+    (total, item) => total + Math.max(0, item.weight),
+    0,
+  );
+  if (totalWeight <= 0) return pickFromNoise(array, noise);
+
+  let target = Math.min(Math.max(noise, 0), 1 - Number.EPSILON) * totalWeight;
+  for (const item of array) {
+    target -= Math.max(0, item.weight);
+    if (target < 0) return item;
+  }
+  return array[array.length - 1];
+}
+
 /**
  * Shuffle an array in place (Fisher-Yates algorithm)
  */

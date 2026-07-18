@@ -3,6 +3,7 @@ import {
   clamp,
   mapRange,
   pickFromNoise,
+  pickWeightedFromNoise,
   getRotationFromNoise,
 } from "../../utils";
 import {
@@ -27,15 +28,29 @@ function fixNoise(noise: number): number {
 const NOISEFACTOR = 0.0017;
 const CELL_SIZE = CITY_BLOCK_SIZE + ROAD_WIDTH;
 
-// Commercial & mixed blocks each place 4 noise-picked GLB models per block; the
+// Commercial & mixed blocks each place 4 weighted, noise-picked GLB models per block; the
 // candidate keys are derived straight from the registry so adding a model there
 // is the only edit needed. Residential blocks instead use a footprint slot
 // packer (see `packResidentialBlock`). All four categories are GLB with embedded
-// materials, so placed buildings always use their "__embedded_{key}".
+// materials or a registry-selected shared material.
 const RESIDENTIAL_KEYS = RESIDENTIAL_SERIES.variants.map((v) => v.key);
-const COMMERCIAL_KEYS = COMMERCIAL_SERIES.variants
-  .filter((variant) => variant.placeable !== false)
-  .map((variant) => variant.key);
+const COMMERCIAL_VARIANTS = COMMERCIAL_SERIES.variants.filter(
+  (variant) => variant.placeable !== false,
+);
+
+type CommercialPlacementState = {
+  counts: Map<string, number>;
+  positions: Map<string, Array<{ x: number; z: number }>>;
+  vantageX: number;
+  vantageZ: number;
+};
+
+// Four commercial buildings share each block, so fully independent picks can
+// put the same silhouette side-by-side—or repeat it in the matching cell of an
+// adjacent block. Keep identical models just over one block-cell apart. This
+// is a local rule, not a global cap: ordinary fillers can still repeat freely
+// across the wider skyline.
+const COMMERCIAL_REPEAT_SPACING_BLOCKS = 1.05;
 
 // The residential variant list, kept whole so the packer can read each model's
 // footprint. Every residential variant declares a footprint in block slots.
@@ -76,6 +91,23 @@ function mulberry32(seed: number): () => number {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/**
+ * Turn a placement position plus seed-dependent Perlin sample into a uniform,
+ * deterministic 0..1 value. Perlin itself clusters around the middle and the
+ * legacy `fixNoise` clamps its tails, which biases weighted registry entries.
+ */
+function getPlacementSelectionNoise(
+  worldX: number,
+  worldZ: number,
+  seedNoise: number,
+): number {
+  const seed =
+    Math.imul(Math.round(worldX), 73856093) ^
+    Math.imul(Math.round(worldZ), 19349663) ^
+    Math.round(seedNoise * 0x7fffffff);
+  return mulberry32(seed)();
 }
 
 // ── City template ────────────────────────────────────────────────────────────
@@ -402,10 +434,25 @@ export function generateLayout(
 
   const halfGrid = Math.floor(gridSize / 2);
 
-  // Captured when the vantage ("X") block is placed, so the player can spawn on
-  // its roof. The vantage is a procedural box tower (no GLB), so we just record
-  // its center + fixed dimensions; FiniteCitySystem builds + collides it.
+  // Resolve the rooftop vantage before placing any blocks. Commercial role
+  // policies use it as the downtown anchor, regardless of where X sits in a
+  // future template.
   let vantage: { x: number; z: number } | null = null;
+  for (let gj = 0; gj < gridSize && !vantage; gj++) {
+    const gi = grid[gj]?.findIndex((block) => block.type === "vantage") ?? -1;
+    if (gi < 0) continue;
+    vantage = {
+      x: (gi - halfGrid) * CELL_SIZE + CITY_BLOCK_SIZE / 2,
+      z: (gj - halfGrid) * CELL_SIZE + CITY_BLOCK_SIZE / 2,
+    };
+  }
+
+  const commercialPlacement: CommercialPlacementState = {
+    counts: new Map(),
+    positions: new Map(),
+    vantageX: vantage?.x ?? 0,
+    vantageZ: vantage?.z ?? 0,
+  };
 
   for (let gj = 0; gj < gridSize; gj++) {
     const row = grid[gj];
@@ -470,6 +517,7 @@ export function generateLayout(
           gj,
           noise,
           buildings,
+          commercialPlacement,
         );
       }
 
@@ -658,6 +706,7 @@ function placeSmallBuildings(
   gj: number,
   noise: NoiseGen,
   buildings: FiniteBuildingPlacement[],
+  commercialPlacement: CommercialPlacementState,
 ): void {
   for (let i = 0; i < 2; i++) {
     for (let j = 0; j < 2; j++) {
@@ -674,8 +723,17 @@ function placeSmallBuildings(
         noise.noise(wx * NOISEFACTOR, wz * NOISEFACTOR),
       );
       const subtypeNoise = fixNoise(noise.noise(wx * 5, wz * 5));
+      const selectionNoise = getPlacementSelectionNoise(wx, wz, typeNoise);
 
-      const type = selectSmallBuilding(blockType, typeNoise, subtypeNoise);
+      const type = selectSmallBuilding(
+        blockType,
+        typeNoise,
+        subtypeNoise,
+        selectionNoise,
+        wx,
+        wz,
+        commercialPlacement,
+      );
 
       // A mixed-block cell is half the block = 2×2 slots. If a residential model
       // with a bigger footprint (e.g. a 3-wide slab) lands here, shrink it
@@ -687,8 +745,8 @@ function placeSmallBuildings(
         ? Math.min(1, CELL_SLOTS / fp.w, CELL_SLOTS / fp.d)
         : 1;
 
-      // Every small building is a GLB with embedded materials. A light per-
-      // instance vertical scale (`scale`) adds height variety across the block.
+      // A light per-instance vertical scale (`scale`) adds height variety. The
+      // renderer resolves embedded versus shared materials from the registry.
       buildings.push({
         modelKey: type,
         materialKey: `__embedded_${type}`,
@@ -709,6 +767,10 @@ function selectSmallBuilding(
   blockType: BlockType,
   typeNoise: number,
   subtypeNoise: number,
+  selectionNoise: number,
+  worldX: number,
+  worldZ: number,
+  commercialPlacement: CommercialPlacementState,
 ): string {
   // Explicit blocks use their category directly; "mixed" lets noise choose
   // residential vs commercial per sub-building. subtypeNoise then picks the
@@ -720,7 +782,61 @@ function selectSmallBuilding(
     series = blockType as "residential" | "commercial";
   }
 
-  return series === "residential"
-    ? pickFromNoise(RESIDENTIAL_KEYS, subtypeNoise)
-    : pickFromNoise(COMMERCIAL_KEYS, subtypeNoise);
+  if (series === "residential") {
+    return pickFromNoise(RESIDENTIAL_KEYS, subtypeNoise);
+  }
+
+  const distanceFromVantageBlocks =
+    Math.hypot(
+      worldX - commercialPlacement.vantageX,
+      worldZ - commercialPlacement.vantageZ,
+    ) / CELL_SIZE;
+  const policyEligible = COMMERCIAL_VARIANTS.filter((variant) => {
+    const policy = variant.placement;
+    if (!policy) return true;
+
+    const count = commercialPlacement.counts.get(variant.key) ?? 0;
+    if (
+      policy.maxInstances !== undefined &&
+      count >= policy.maxInstances
+    ) {
+      return false;
+    }
+    return (
+      policy.maxDistanceFromVantageBlocks === undefined ||
+      distanceFromVantageBlocks <= policy.maxDistanceFromVantageBlocks
+    );
+  });
+
+  const locallyDistinct = policyEligible.filter((variant) => {
+    const positions = commercialPlacement.positions.get(variant.key);
+    if (!positions) return true;
+    return positions.every(
+      (position) =>
+        Math.hypot(worldX - position.x, worldZ - position.z) / CELL_SIZE >=
+        COMMERCIAL_REPEAT_SPACING_BLOCKS,
+    );
+  });
+
+  // Prefer a locally distinct silhouette. If a very small custom registry
+  // exhausts that set, preserve role/cap rules before falling back to the full
+  // registry as a final resilience measure.
+  const candidates =
+    locallyDistinct.length > 0
+      ? locallyDistinct
+      : policyEligible.length > 0
+        ? policyEligible
+        : COMMERCIAL_VARIANTS;
+  const variant = pickWeightedFromNoise(
+    candidates,
+    selectionNoise,
+  );
+  commercialPlacement.counts.set(
+    variant.key,
+    (commercialPlacement.counts.get(variant.key) ?? 0) + 1,
+  );
+  const positions = commercialPlacement.positions.get(variant.key) ?? [];
+  positions.push({ x: worldX, z: worldZ });
+  commercialPlacement.positions.set(variant.key, positions);
+  return variant.key;
 }

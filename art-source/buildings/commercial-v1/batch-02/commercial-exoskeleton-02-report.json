@@ -1,0 +1,75 @@
+{
+  "name": "commercial-exoskeleton-02",
+  "bounds": {
+    "min": [
+      -22.0,
+      -18.0,
+      0.0
+    ],
+    "max": [
+      22.0,
+      18.0,
+      151.60000610351562
+    ],
+    "dimensions": [
+      44.0,
+      36.0,
+      151.60000610351562
+    ]
+  },
+  "baseCentered": true,
+  "vertices": 710,
+  "polygons": 385,
+  "triangles": 762,
+  "uvLayers": 1,
+  "materials": 1,
+  "geometryOnly": false,
+  "facade": {
+    "region": "facade_04",
+    "floorHeight": 3.4,
+    "horizontalAnchor": 0.5
+  },
+  "beacons": [
+    {
+      "name": "core_beacon",
+      "center": [
+        0,
+        0
+      ],
+      "bottomFloor": 42,
+      "baseOffset": 6,
+      "rodHeight": 2.2,
+      "capRadius": 0.3
+    }
+  ],
+  "textureMaps": {
+    "diffuse": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-diffuse.png",
+    "emissive": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-emissive.png",
+    "roughness": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-roughness.png",
+    "normal": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-normal.png"
+  },
+  "atlasRegions": [
+    "beacon_red",
+    "beacon_rod_dark",
+    "facade_04",
+    "hvac_access_panel",
+    "hvac_fan_quad",
+    "hvac_louver_wide",
+    "neon_cyan",
+    "neon_magenta",
+    "roof_concrete_tile_a",
+    "roof_concrete_tile_b",
+    "roof_dark_metal",
+    "roof_metal_tile_a",
+    "roof_metal_tile_b",
+    "roof_weathered_concrete",
+    "service_wall_clean",
+    "structural_dark"
+  ],
+  "outputs": {
+    "blend": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/batch-02/commercial-exoskeleton-02.blend",
+    "glb": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/batch-02/commercial-exoskeleton-02.glb",
+    "preview": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/batch-02/commercial-exoskeleton-02-preview.png",
+    "roofPreview": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/batch-02/commercial-exoskeleton-02-roof-preview.png"
+  }
+}

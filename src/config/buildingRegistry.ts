@@ -36,6 +36,16 @@ export type BuildingVariant = {
   footprint?: { w: number; d: number };
   /** Keep an asset visible in the viewer without adding it to generated cities. */
   placeable?: boolean;
+  /**
+   * Optional generated-city art-direction rules. Variants without a policy are
+   * normal repeating fillers. Distance is measured from the rooftop vantage,
+   * in city-block cells, so signature buildings stay in the authored core.
+   */
+  placement?: {
+    role: "filler" | "accent" | "landmark";
+    maxInstances?: number;
+    maxDistanceFromVantageBlocks?: number;
+  };
 };
 
 export type BuildingSeries = {
@@ -186,6 +196,7 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
     {
       key: "commercial_02",
       weight: 1,
+      placeable: false,
       source: {
         format: "glb",
         path: "models/buildings/commercial/2026-commercial-building-2.glb",
@@ -195,6 +206,7 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
     {
       key: "commercial_03",
       weight: 1,
+      placeable: false,
       source: {
         format: "glb",
         path: "models/buildings/commercial/2026-commercial-building-3.glb",
@@ -204,6 +216,7 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
     {
       key: "commercial_04",
       weight: 1,
+      placeable: false,
       source: {
         format: "glb",
         path: "models/buildings/commercial/2026-commercial-building-4.glb",
@@ -314,8 +327,8 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
     },
     {
       key: "commercial_16",
+      // Replaces one retired legacy slot in generated commercial blocks.
       weight: 1,
-      placeable: false,
       source: {
         format: "glb",
         path: "models/buildings/commercial-v1/commercial-wide-slab-01.glb",
@@ -324,8 +337,8 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
     },
     {
       key: "commercial_17",
+      // Replaces one retired legacy slot in generated commercial blocks.
       weight: 1,
-      placeable: false,
       source: {
         format: "glb",
         path: "models/buildings/commercial-v1/commercial-stepped-tower-01.glb",
@@ -334,11 +347,71 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
     },
     {
       key: "commercial_18",
+      // Replaces one retired legacy slot in generated commercial blocks.
       weight: 1,
-      placeable: false,
       source: {
         format: "glb",
         path: "models/buildings/commercial-v1/commercial-slim-tower-01.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+    {
+      key: "commercial_19",
+      // Batch 2: rounded glass tower.
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-rounded-glass-02.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+    {
+      key: "commercial_20",
+      // Batch 2: vertical tech-fin tower.
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-tech-fins-02.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+    {
+      key: "commercial_21",
+      // Batch 2: clean stepped dark office tower.
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-concrete-frame-02.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+    {
+      key: "commercial_22",
+      // Batch 2: illuminated signature crown.
+      weight: 0.35,
+      placement: {
+        role: "accent",
+        maxInstances: 6,
+        maxDistanceFromVantageBlocks: 9,
+      },
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-signature-crown-02.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+    {
+      key: "commercial_23",
+      // Batch 2: cyan-and-magenta emissive exoskeleton.
+      weight: 0.28,
+      placement: {
+        role: "landmark",
+        maxInstances: 3,
+        maxDistanceFromVantageBlocks: 7,
+      },
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-exoskeleton-02.glb",
         materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
       },
     },

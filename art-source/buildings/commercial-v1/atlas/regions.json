@@ -543,6 +543,70 @@
         "v1": 0.12201969
       }
     },
+    "structural_dark": {
+      "type": "metal-swatch",
+      "source": "generated:#202a34",
+      "pixel": {
+        "x": 3808,
+        "y": 4052,
+        "width": 28,
+        "height": 28
+      },
+      "uv": {
+        "u0": 0.9296875,
+        "v0": 0.00390625,
+        "u1": 0.93652344,
+        "v1": 0.01074219
+      }
+    },
+    "structural_light": {
+      "type": "metal-swatch",
+      "source": "generated:#8c9aaa",
+      "pixel": {
+        "x": 3856,
+        "y": 4052,
+        "width": 28,
+        "height": 28
+      },
+      "uv": {
+        "u0": 0.94140625,
+        "v0": 0.00390625,
+        "u1": 0.94824219,
+        "v1": 0.01074219
+      }
+    },
+    "neon_cyan": {
+      "type": "emissive",
+      "source": "generated:#16dff5",
+      "pixel": {
+        "x": 3904,
+        "y": 4052,
+        "width": 28,
+        "height": 28
+      },
+      "uv": {
+        "u0": 0.953125,
+        "v0": 0.00390625,
+        "u1": 0.95996094,
+        "v1": 0.01074219
+      }
+    },
+    "neon_magenta": {
+      "type": "emissive",
+      "source": "generated:#ff43d1",
+      "pixel": {
+        "x": 3952,
+        "y": 4052,
+        "width": 28,
+        "height": 28
+      },
+      "uv": {
+        "u0": 0.96484375,
+        "v0": 0.00390625,
+        "u1": 0.97167969,
+        "v1": 0.01074219
+      }
+    },
     "beacon_rod_dark": {
       "type": "metal-swatch",
       "source": "generated:#151a1f",

@@ -301,6 +301,226 @@ def add_box(
         )
 
 
+def rounded_rectangle_points(
+    center_x: float,
+    center_y: float,
+    width: float,
+    depth: float,
+    radius: float,
+    corner_segments: int,
+) -> list[tuple[float, float]]:
+    radius = min(max(radius, 0.01), width / 2 - 0.01, depth / 2 - 0.01)
+    corners = (
+        (center_x + width / 2 - radius, center_y - depth / 2 + radius, -90),
+        (center_x + width / 2 - radius, center_y + depth / 2 - radius, 0),
+        (center_x - width / 2 + radius, center_y + depth / 2 - radius, 90),
+        (center_x - width / 2 + radius, center_y - depth / 2 + radius, 180),
+    )
+    points: list[tuple[float, float]] = []
+    for corner_x, corner_y, start_degrees in corners:
+        for segment in range(corner_segments + 1):
+            angle = math.radians(start_degrees + 90 * segment / corner_segments)
+            points.append(
+                (
+                    corner_x + math.cos(angle) * radius,
+                    corner_y + math.sin(angle) * radius,
+                )
+            )
+    return points
+
+
+def add_beam(
+    vertices: list[tuple[float, float, float]],
+    faces: list[tuple[int, ...]],
+    face_mappings: list[dict],
+    definition: dict,
+) -> None:
+    start = Vector(definition["start"])
+    end = Vector(definition["end"])
+    axis = end - start
+    length = axis.length
+    if length <= 1e-5:
+        raise ValueError(f"{definition['name']} beam has zero length")
+    axis.normalize()
+    reference = Vector((0, 0, 1))
+    if abs(axis.dot(reference)) > 0.92:
+        reference = Vector((0, 1, 0))
+    cross_u = axis.cross(reference).normalized()
+    cross_v = axis.cross(cross_u).normalized()
+    half = definition.get("thickness", 0.45) / 2
+    offset = len(vertices)
+    for point in (start, end):
+        vertices.extend(
+            tuple(point + u_sign * cross_u * half + v_sign * cross_v * half)
+            for u_sign, v_sign in ((-1, -1), (1, -1), (1, 1), (-1, 1))
+        )
+    beam_faces = [
+        (offset + 0, offset + 3, offset + 2, offset + 1),
+        (offset + 4, offset + 5, offset + 6, offset + 7),
+        (offset + 0, offset + 1, offset + 5, offset + 4),
+        (offset + 1, offset + 2, offset + 6, offset + 5),
+        (offset + 2, offset + 3, offset + 7, offset + 6),
+        (offset + 3, offset + 0, offset + 4, offset + 7),
+    ]
+    faces.extend(beam_faces)
+    region = definition.get("region", "structural_dark")
+    face_mappings.extend(
+        {
+            "region": region,
+            "face": "beam",
+            "width": length,
+            "height": definition.get("thickness", 0.45),
+        }
+        for _ in beam_faces
+    )
+
+
+def add_box_array(
+    vertices: list[tuple[float, float, float]],
+    faces: list[tuple[int, ...]],
+    face_mappings: list[dict],
+    definition: dict,
+    spec: dict,
+) -> None:
+    count = definition["count"]
+    if count < 1:
+        return
+    axis = definition.get("axis", "x")
+    span = definition.get("span", 0)
+    center = list(definition.get("center", [0, 0]))
+    region = definition.get("region", "structural_dark")
+    for index in range(count):
+        offset = 0 if count == 1 else -span / 2 + span * index / (count - 1)
+        item_center = list(center)
+        item_center[0 if axis == "x" else 1] += offset
+        add_box(
+            vertices,
+            faces,
+            face_mappings,
+            {
+                "name": f"{definition['name']}_{index + 1:02d}",
+                "center": item_center,
+                "size": definition["size"],
+                "bottom": definition["bottom"],
+                "fitAspect": False,
+                "regions": {
+                    "front": region,
+                    "right": region,
+                    "back": region,
+                    "left": region,
+                    "top": region,
+                },
+            },
+            spec,
+            role="prop",
+        )
+
+
+def add_rounded_mass(
+    vertices: list[tuple[float, float, float]],
+    faces: list[tuple[int, ...]],
+    face_mappings: list[dict],
+    definition: dict,
+    spec: dict,
+) -> None:
+    center_x, center_y = definition.get("center", [0, 0])
+    width, depth, height, bottom = resolve_box_dimensions(definition, spec)
+    top = bottom + height
+    points = rounded_rectangle_points(
+        center_x,
+        center_y,
+        width,
+        depth,
+        definition.get("cornerRadius", min(width, depth) * 0.22),
+        max(1, definition.get("cornerSegments", 3)),
+    )
+    offset = len(vertices)
+    vertices.extend((x, y, bottom) for x, y in points)
+    vertices.extend((x, y, top) for x, y in points)
+    count = len(points)
+    regions = regions_for_definition(definition, spec)
+    floor_mapping = {
+        "floors": definition.get("floors"),
+        "bottomFloor": definition.get("bottomFloor", 0),
+        "sourceFloorStart": definition.get("sourceFloorStart"),
+        "height": height,
+        "fitAspect": False,
+    }
+    for index, point in enumerate(points):
+        next_index = (index + 1) % count
+        next_point = points[next_index]
+        edge_x = next_point[0] - point[0]
+        edge_y = next_point[1] - point[1]
+        normal_x, normal_y = edge_y, -edge_x
+        if abs(normal_x) > abs(normal_y):
+            face_name = "right" if normal_x > 0 else "left"
+        else:
+            face_name = "back" if normal_y > 0 else "front"
+        faces.append(
+            (
+                offset + index,
+                offset + next_index,
+                offset + count + next_index,
+                offset + count + index,
+            )
+        )
+        face_mappings.append(
+            {
+                "region": regions[face_name],
+                "face": face_name,
+                "width": math.hypot(edge_x, edge_y),
+                **floor_mapping,
+            }
+        )
+
+    faces.append(tuple(offset + count + index for index in range(count)))
+    face_mappings.append(
+        {
+            "region": regions["top"],
+            "face": "top",
+            "uvMode": "planarXY",
+            "bounds": [
+                center_x - width / 2,
+                center_y - depth / 2,
+                center_x + width / 2,
+                center_y + depth / 2,
+            ],
+        }
+    )
+    faces.append(tuple(offset + index for index in reversed(range(count))))
+    face_mappings.append(
+        {
+            "region": regions.get("bottom", regions["top"]),
+            "face": "bottom",
+            "uvMode": "planarXY",
+            "bounds": [
+                center_x - width / 2,
+                center_y - depth / 2,
+                center_x + width / 2,
+                center_y + depth / 2,
+            ],
+        }
+    )
+
+    parapet = spec.get("roof", {}).get("parapet")
+    if parapet and definition.get("parapet", True):
+        rail_z = top + parapet.get("height", 0.9) * 0.45
+        for index, point in enumerate(points):
+            next_point = points[(index + 1) % count]
+            add_beam(
+                vertices,
+                faces,
+                face_mappings,
+                {
+                    "name": f"{definition['name']}_parapet_{index:02d}",
+                    "start": [point[0], point[1], rail_z],
+                    "end": [next_point[0], next_point[1], rail_z],
+                    "thickness": parapet.get("width", 0.55),
+                    "region": parapet.get("capRegion", "structural_dark"),
+                },
+            )
+
+
 def resolve_beacon_base(beacon: dict, spec: dict) -> float:
     if "bottom" in beacon:
         return beacon["bottom"]
@@ -591,9 +811,16 @@ def create_building(
     faces: list[tuple[int, ...]] = []
     face_mappings: list[dict] = []
     for definition in spec["masses"]:
-        add_box(vertices, faces, face_mappings, definition, spec, role="mass")
+        if definition.get("shape") == "rounded":
+            add_rounded_mass(vertices, faces, face_mappings, definition, spec)
+        else:
+            add_box(vertices, faces, face_mappings, definition, spec, role="mass")
     for definition in spec.get("props", []):
         add_box(vertices, faces, face_mappings, definition, spec, role="prop")
+    for definition in spec.get("arrays", []):
+        add_box_array(vertices, faces, face_mappings, definition, spec)
+    for definition in spec.get("beams", []):
+        add_beam(vertices, faces, face_mappings, definition)
     for beacon in spec.get("beacons", []):
         add_beacon(vertices, faces, face_mappings, beacon, spec)
 
@@ -625,7 +852,23 @@ def create_building(
             uv = aspect_fit_uv(region, mapping)
         else:
             uv = region["uv"]
-        if len(polygon.loop_indices) == 3:
+        if mapping.get("uvMode") == "planarXY":
+            x0, y0, x1, y1 = mapping["bounds"]
+            source_uv = region["uv"]
+            corners = tuple(
+                (
+                    source_uv["u0"]
+                    + (mesh.vertices[vertex_index].co.x - x0)
+                    / max(x1 - x0, 1e-5)
+                    * (source_uv["u1"] - source_uv["u0"]),
+                    source_uv["v0"]
+                    + (mesh.vertices[vertex_index].co.y - y0)
+                    / max(y1 - y0, 1e-5)
+                    * (source_uv["v1"] - source_uv["v0"]),
+                )
+                for vertex_index in polygon.vertices
+            )
+        elif len(polygon.loop_indices) == 3:
             corners = (
                 (uv["u0"], uv["v0"]),
                 (uv["u1"], uv["v0"]),
