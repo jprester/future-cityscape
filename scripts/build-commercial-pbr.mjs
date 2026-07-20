@@ -8,10 +8,10 @@ import { fileURLToPath } from "node:url";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, "..");
-const ATLAS_DIR = path.join(
-  ROOT,
-  "art-source/buildings/commercial-v1/atlas",
-);
+const requestedAtlasDir = process.argv[2];
+const ATLAS_DIR = requestedAtlasDir
+  ? path.resolve(ROOT, requestedAtlasDir)
+  : path.join(ROOT, "art-source/buildings/commercial-v1/atlas");
 const MANIFEST_PATH = path.join(ATLAS_DIR, "regions.json");
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
 const { width, height } = manifest.atlas;
@@ -56,6 +56,17 @@ function createEmissiveMap(temporaryDir) {
     const tile = path.join(temporaryDir, `emissive-tile-${index}.png`);
     const saturationThreshold = region.type === "trim" ? "8%" : "12%";
     const lightnessThreshold = region.type === "trim" ? "24%" : "32%";
+
+    if (region.emissiveSource) {
+      layers.push(
+        path.resolve(ATLAS_DIR, region.emissiveSource),
+        "-geometry",
+        `+${region.pixel.x}+${region.pixel.y}`,
+        "-composite",
+      );
+      index += 1;
+      continue;
+    }
 
     runMagick([
       diffuse,
@@ -105,7 +116,7 @@ function createEmissiveMap(temporaryDir) {
       "Multiply",
       "-composite",
       "-blur",
-      "0x0.45",
+      region.type === "facade" ? "0x0.12" : "0x0.35",
       mask,
     ]);
     runMagick([

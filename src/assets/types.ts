@@ -10,7 +10,10 @@ import type {
 import { getEmbeddedEmissiveEntries } from "../config/buildingRegistry";
 import { ADS_META, adMatKey } from "../config/ads";
 import { SMALL_ADS_META, smallAdMatKey } from "../config/smallAds";
-import { COMMERCIAL_ATLAS_MATERIAL_KEY } from "../config/commercialBuildingKit";
+import {
+  COMMERCIAL_ATLAS_MATERIAL_KEY,
+  COMMERCIAL_INDUSTRIAL_MATERIAL_KEY,
+} from "../config/commercialBuildingKit";
 
 // ============================================================================
 // Texture Types
@@ -176,6 +179,10 @@ export const BASE_EMISSIVE_INTENSITIES: Record<
   building_10: { category: "buildings", base: 2.0 },
   mega_building_01: { category: "buildings", base: 2.0 },
   [COMMERCIAL_ATLAS_MATERIAL_KEY]: { category: "buildings", base: 1.25 },
+  [COMMERCIAL_INDUSTRIAL_MATERIAL_KEY]: {
+    category: "buildings",
+    base: 1.45,
+  },
   // Embedded GLB models — derived from building registry
   ...getEmbeddedEmissiveEntries(),
   // Neons (storefronts, signs)

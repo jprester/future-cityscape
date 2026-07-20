@@ -887,7 +887,7 @@ def create_building(
     building = bpy.data.objects.new(spec["name"], mesh)
     bpy.context.scene.collection.objects.link(building)
     building["asset_family"] = "commercial_v1"
-    building["atlas"] = "commercial-atlas-v1"
+    building["atlas"] = spec.get("textureProfile", "commercial-v1")
     building["base_centered"] = True
     if spec.get("facade"):
         building["primary_facade"] = spec["facade"]["region"]
@@ -973,6 +973,7 @@ def setup_preview(spec: dict, output_path: Path, roof_output_path: Path) -> None
         scene.view_settings.look = "AgX - Medium High Contrast"
     except TypeError:
         pass
+    scene.view_settings.exposure = spec["preview"].get("exposure", 0.0)
 
     bpy.ops.render.render(write_still=True)
 

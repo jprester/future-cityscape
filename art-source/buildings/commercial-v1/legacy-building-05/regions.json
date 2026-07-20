@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "atlas": {
+    "width": 1024,
+    "height": 512,
+    "padding": 8,
+    "pixelOrigin": "top-left",
+    "uvOrigin": "bottom-left",
+    "diffuse": "../../../../../public/assets/textures/buildings/building_05.jpg",
+    "emissive": "../../../../../public/assets/textures/buildings/building_05_em.jpg",
+    "roughness": "../../../../../public/assets/textures/buildings/building_05_spec.jpg",
+    "normal": "building-05-normal.png"
+  },
+  "regions": {
+    "legacy_louvers": {
+      "type": "facade",
+      "facadeGrid": { "floors": 40 },
+      "pixel": { "x": 8, "y": 8, "width": 496, "height": 496 },
+      "uv": { "u0": 0.0078125, "v0": 0.015625, "u1": 0.4921875, "v1": 0.984375 }
+    },
+    "legacy_service_spine": {
+      "type": "mechanical",
+      "pixel": { "x": 520, "y": 8, "width": 472, "height": 496 },
+      "uv": { "u0": 0.5078125, "v0": 0.015625, "u1": 0.96875, "v1": 0.984375 }
+    },
+    "legacy_roof_dark": {
+      "type": "roof-tile",
+      "pixel": { "x": 860, "y": 300, "width": 140, "height": 180 },
+      "uv": { "u0": 0.83984375, "v0": 0.0625, "u1": 0.9765625, "v1": 0.4140625 }
+    },
+    "legacy_hvac_louver": {
+      "type": "mechanical-module",
+      "pixel": { "x": 528, "y": 28, "width": 196, "height": 144 },
+      "uv": { "u0": 0.515625, "v0": 0.6640625, "u1": 0.70703125, "v1": 0.9453125 }
+    },
+    "legacy_hvac_top": {
+      "type": "mechanical-module",
+      "pixel": { "x": 804, "y": 56, "width": 136, "height": 136 },
+      "uv": { "u0": 0.78515625, "v0": 0.625, "u1": 0.91796875, "v1": 0.890625 }
+    }
+  }
+}

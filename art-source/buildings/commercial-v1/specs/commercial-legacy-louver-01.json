@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "name": "commercial-legacy-louver-01",
+  "description": "Simple 40-floor louvered skyscraper derived from the top-left legacy SynthCity concept.",
+  "textureProfile": "commercial-industrial-v2",
+  "material": {
+    "name": "commercial_industrial_v2",
+    "roughness": 0.72,
+    "metallic": 0.16,
+    "emissiveStrength": 1.55,
+    "normalStrength": 0.3
+  },
+  "facade": {
+    "region": "industrial_facade_01",
+    "floorHeight": 3.4,
+    "bayWidth": 2.4,
+    "horizontalAnchor": 0.5
+  },
+  "roof": {
+    "tileSize": 7,
+    "tiles": {
+      "industrial_roof_dark": ["industrial_roof_dark"]
+    },
+    "parapet": {
+      "height": 0.9,
+      "width": 0.5,
+      "sideRegion": "industrial_structural_dark",
+      "capRegion": "industrial_roof_dark"
+    }
+  },
+  "masses": [
+    {
+      "name": "podium",
+      "center": [0, 0],
+      "footprint": [40, 32],
+      "floors": 4,
+      "bottomFloor": 0,
+      "fitAspect": true,
+      "regions": {
+        "front": "industrial_service_wall",
+        "right": "industrial_access_panel",
+        "back": "industrial_service_wall",
+        "left": "industrial_access_panel",
+        "top": "industrial_roof_dark"
+      }
+    },
+    {
+      "name": "main_louver_shaft",
+      "center": [0, 0],
+      "footprint": [32, 25],
+      "floors": 36,
+      "bottomFloor": 4,
+      "roofRegion": "industrial_roof_dark"
+    }
+  ],
+  "props": [
+    {
+      "name": "corner_spine_southwest",
+      "center": [-15.55, -12.05],
+      "size": [1.1, 1.1, 122.4],
+      "bottom": 13.6,
+      "regions": {
+        "front": "industrial_service_wall",
+        "right": "industrial_service_wall",
+        "back": "industrial_service_wall",
+        "left": "industrial_service_wall",
+        "top": "industrial_roof_dark"
+      }
+    },
+    {
+      "name": "corner_spine_southeast",
+      "center": [15.55, -12.05],
+      "size": [1.1, 1.1, 122.4],
+      "bottom": 13.6,
+      "regions": {
+        "front": "industrial_service_wall",
+        "right": "industrial_service_wall",
+        "back": "industrial_service_wall",
+        "left": "industrial_service_wall",
+        "top": "industrial_roof_dark"
+      }
+    },
+    {
+      "name": "corner_spine_northwest",
+      "center": [-15.55, 12.05],
+      "size": [1.1, 1.1, 122.4],
+      "bottom": 13.6,
+      "regions": {
+        "front": "industrial_service_wall",
+        "right": "industrial_service_wall",
+        "back": "industrial_service_wall",
+        "left": "industrial_service_wall",
+        "top": "industrial_roof_dark"
+      }
+    },
+    {
+      "name": "corner_spine_northeast",
+      "center": [15.55, 12.05],
+      "size": [1.1, 1.1, 122.4],
+      "bottom": 13.6,
+      "regions": {
+        "front": "industrial_service_wall",
+        "right": "industrial_service_wall",
+        "back": "industrial_service_wall",
+        "left": "industrial_service_wall",
+        "top": "industrial_roof_dark"
+      }
+    },
+    {
+      "name": "roof_core",
+      "center": [0, 0],
+      "size": [8, 6.5, 4.5],
+      "bottomFloor": 40,
+      "regions": {
+        "front": "industrial_hvac_louver",
+        "right": "industrial_access_panel",
+        "back": "industrial_hvac_louver",
+        "left": "industrial_access_panel",
+        "top": "industrial_roof_dark"
+      }
+    },
+    {
+      "name": "hvac_west",
+      "center": [-9, 5.5],
+      "size": [4, 3.5, 2.2],
+      "bottomFloor": 40,
+      "regions": {
+        "front": "industrial_hvac_louver",
+        "right": "industrial_access_panel",
+        "back": "industrial_hvac_louver",
+        "left": "industrial_access_panel",
+        "top": "industrial_hvac_fan"
+      }
+    },
+    {
+      "name": "hvac_east",
+      "center": [9, 5.5],
+      "size": [4, 3.5, 2.2],
+      "bottomFloor": 40,
+      "regions": {
+        "front": "industrial_hvac_louver",
+        "right": "industrial_access_panel",
+        "back": "industrial_hvac_louver",
+        "left": "industrial_access_panel",
+        "top": "industrial_hvac_fan"
+      }
+    }
+  ],
+  "beacons": [
+    {
+      "name": "roof_beacon",
+      "center": [0, 0],
+      "bottomFloor": 40,
+      "baseOffset": 4.5,
+      "rodHeight": 1.8,
+      "capRadius": 0.28,
+      "rodRegion": "industrial_structural_dark",
+      "capRegion": "industrial_beacon_red"
+    }
+  ],
+  "preview": {
+    "resolution": 900,
+    "exposure": 1.1,
+    "camera": [195, -240, 112],
+    "target": [0, 0, 69],
+    "roofCamera": {
+      "camera": [92, -112, 205],
+      "target": [0, 0, 134]
+    }
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "name": "commercial-blue-glass-03",
+  "description": "Twenty-floor blue-glass office shaft on a four-floor mechanical podium, based on the top-left tall-tower concept.",
+  "material": {
+    "name": "commercial_atlas_v1",
+    "roughness": 0.52,
+    "metallic": 0.16,
+    "emissiveStrength": 1.35,
+    "normalStrength": 0.46
+  },
+  "facade": {
+    "region": "facade_01",
+    "floorHeight": 3.4,
+    "bayWidth": 5.5,
+    "horizontalAnchor": 0.5
+  },
+  "roof": {
+    "tileSize": 8,
+    "tiles": {
+      "roof_dark_metal": ["roof_metal_tile_a", "roof_metal_tile_b"],
+      "roof_weathered_concrete": ["roof_concrete_tile_a", "roof_concrete_tile_b"]
+    },
+    "parapet": {
+      "height": 0.9,
+      "width": 0.55,
+      "sideRegion": "structural_dark",
+      "capRegion": "roof_metal_tile_a"
+    }
+  },
+  "masses": [
+    {
+      "name": "mechanical_podium",
+      "center": [0, 0],
+      "footprint": [42, 34],
+      "floors": 4,
+      "bottomFloor": 0,
+      "fitAspect": true,
+      "regions": {
+        "front": "service_wall_clean",
+        "right": "hvac_access_panel",
+        "back": "service_wall_clean",
+        "left": "hvac_louver_wide",
+        "top": "roof_dark_metal"
+      }
+    },
+    {
+      "name": "glass_tower",
+      "center": [0, 0],
+      "footprint": [34, 26],
+      "floors": 20,
+      "bottomFloor": 4,
+      "roofRegion": "roof_weathered_concrete"
+    }
+  ],
+  "props": [
+    {
+      "name": "roof_core",
+      "center": [0, 0],
+      "size": [10, 8, 5.5],
+      "bottomFloor": 24,
+      "regions": {
+        "front": "service_wall_clean",
+        "right": "hvac_access_panel",
+        "back": "service_wall_clean",
+        "left": "hvac_access_panel",
+        "top": "roof_metal_tile_a"
+      }
+    },
+    {
+      "name": "hvac_west",
+      "center": [-9, -6],
+      "size": [4.5, 4, 2.4],
+      "bottomFloor": 24,
+      "regions": {
+        "front": "hvac_louver_wide",
+        "right": "hvac_access_panel",
+        "back": "hvac_louver_wide",
+        "left": "hvac_access_panel",
+        "top": "hvac_fan_quad"
+      }
+    },
+    {
+      "name": "hvac_east",
+      "center": [9, -6],
+      "size": [4.5, 4, 2.4],
+      "bottomFloor": 24,
+      "regions": {
+        "front": "hvac_louver_wide",
+        "right": "hvac_access_panel",
+        "back": "hvac_louver_wide",
+        "left": "hvac_access_panel",
+        "top": "hvac_fan_quad"
+      }
+    }
+  ],
+  "beacons": [
+    {
+      "name": "core_beacon",
+      "center": [0, 0],
+      "bottomFloor": 24,
+      "baseOffset": 5.5,
+      "rodHeight": 1.9,
+      "capRadius": 0.28
+    },
+    {
+      "name": "northwest_beacon",
+      "center": [-13, 8],
+      "bottomFloor": 24,
+      "baseOffset": 0.9,
+      "rodHeight": 1.6,
+      "capRadius": 0.25
+    },
+    {
+      "name": "northeast_beacon",
+      "center": [13, 8],
+      "bottomFloor": 24,
+      "baseOffset": 0.9,
+      "rodHeight": 1.6,
+      "capRadius": 0.25
+    }
+  ],
+  "preview": {
+    "resolution": 900,
+    "camera": [128, -158, 82],
+    "target": [0, 0, 43],
+    "roofCamera": {
+      "camera": [68, -82, 112],
+      "target": [0, 0, 76]
+    }
+  }
+}

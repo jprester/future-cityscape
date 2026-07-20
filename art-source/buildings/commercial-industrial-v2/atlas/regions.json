@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "atlas": {
+    "width": 4096,
+    "height": 4096,
+    "padding": 16,
+    "pixelOrigin": "top-left",
+    "uvOrigin": "bottom-left",
+    "diffuse": "commercial-industrial-v2-diffuse.png",
+    "emissive": "commercial-industrial-v2-emissive.png",
+    "roughness": "commercial-industrial-v2-roughness.png",
+    "normal": "commercial-industrial-v2-normal.png"
+  },
+  "regions": {
+    "industrial_facade_01": { "type": "facade", "emissiveSource": "../source/industrial-facade-01-authored-emissive.png", "facadeGrid": { "floors": 36 }, "pixel": { "x": 32, "y": 32, "width": 960, "height": 1328 }, "uv": { "u0": 0.0078125, "v0": 0.66796875, "u1": 0.2421875, "v1": 0.9921875 } },
+    "industrial_facade_02": { "type": "facade", "facadeGrid": { "floors": 36 }, "pixel": { "x": 1056, "y": 32, "width": 960, "height": 1328 }, "uv": { "u0": 0.2578125, "v0": 0.66796875, "u1": 0.4921875, "v1": 0.9921875 } },
+    "industrial_facade_03": { "type": "facade", "facadeGrid": { "floors": 28 }, "pixel": { "x": 2080, "y": 32, "width": 960, "height": 1328 }, "uv": { "u0": 0.5078125, "v0": 0.66796875, "u1": 0.7421875, "v1": 0.9921875 } },
+    "industrial_facade_04": { "type": "facade", "facadeGrid": { "floors": 32 }, "pixel": { "x": 3104, "y": 32, "width": 960, "height": 1328 }, "uv": { "u0": 0.7578125, "v0": 0.66796875, "u1": 0.9921875, "v1": 0.9921875 } },
+    "industrial_facade_05": { "type": "facade", "facadeGrid": { "floors": 46 }, "pixel": { "x": 32, "y": 1408, "width": 960, "height": 1328 }, "uv": { "u0": 0.0078125, "v0": 0.33203125, "u1": 0.2421875, "v1": 0.65625 } },
+    "industrial_facade_06": { "type": "facade", "facadeGrid": { "floors": 20 }, "pixel": { "x": 1056, "y": 1408, "width": 960, "height": 1328 }, "uv": { "u0": 0.2578125, "v0": 0.33203125, "u1": 0.4921875, "v1": 0.65625 } },
+    "industrial_facade_07": { "type": "facade", "facadeGrid": { "floors": 28 }, "pixel": { "x": 2080, "y": 1408, "width": 960, "height": 1328 }, "uv": { "u0": 0.5078125, "v0": 0.33203125, "u1": 0.7421875, "v1": 0.65625 } },
+    "industrial_facade_08": { "type": "facade", "facadeGrid": { "floors": 34 }, "pixel": { "x": 3104, "y": 1408, "width": 960, "height": 1328 }, "uv": { "u0": 0.7578125, "v0": 0.33203125, "u1": 0.9921875, "v1": 0.65625 } },
+    "industrial_roof_weathered": { "type": "roof", "pixel": { "x": 32, "y": 2784, "width": 832, "height": 608 }, "uv": { "u0": 0.0078125, "v0": 0.171875, "u1": 0.2109375, "v1": 0.3203125 } },
+    "industrial_roof_dark": { "type": "roof", "pixel": { "x": 32, "y": 3456, "width": 832, "height": 512 }, "uv": { "u0": 0.0078125, "v0": 0.03125, "u1": 0.2109375, "v1": 0.15625 } },
+    "industrial_hvac_fan": { "type": "mechanical", "pixel": { "x": 896, "y": 2784, "width": 448, "height": 608 }, "uv": { "u0": 0.21875, "v0": 0.171875, "u1": 0.328125, "v1": 0.3203125 } },
+    "industrial_hvac_louver": { "type": "mechanical", "pixel": { "x": 1376, "y": 2784, "width": 304, "height": 608 }, "uv": { "u0": 0.3359375, "v0": 0.171875, "u1": 0.41015625, "v1": 0.3203125 } },
+    "industrial_access_panel": { "type": "mechanical", "pixel": { "x": 1712, "y": 2784, "width": 304, "height": 608 }, "uv": { "u0": 0.41796875, "v0": 0.171875, "u1": 0.4921875, "v1": 0.3203125 } },
+    "industrial_service_wall": { "type": "mechanical", "pixel": { "x": 2048, "y": 2784, "width": 704, "height": 608 }, "uv": { "u0": 0.5, "v0": 0.171875, "u1": 0.671875, "v1": 0.3203125 } },
+    "industrial_mechanical_panels": { "type": "mechanical", "pixel": { "x": 896, "y": 3456, "width": 704, "height": 224 }, "uv": { "u0": 0.21875, "v0": 0.1015625, "u1": 0.390625, "v1": 0.15625 } },
+    "industrial_trim_cyan": { "type": "trim", "pixel": { "x": 3504, "y": 2784, "width": 40, "height": 1216 }, "uv": { "u0": 0.85546875, "v0": 0.0234375, "u1": 0.86523438, "v1": 0.3203125 } },
+    "industrial_trim_amber": { "type": "trim", "pixel": { "x": 3912, "y": 2784, "width": 40, "height": 1216 }, "uv": { "u0": 0.95507813, "v0": 0.0234375, "u1": 0.96484375, "v1": 0.3203125 } },
+    "industrial_structural_dark": { "type": "metal-swatch", "pixel": { "x": 4000, "y": 4052, "width": 28, "height": 28 }, "uv": { "u0": 0.9765625, "v0": 0.00390625, "u1": 0.98339844, "v1": 0.01074219 } },
+    "industrial_beacon_red": { "type": "emissive", "pixel": { "x": 4048, "y": 4052, "width": 28, "height": 28 }, "uv": { "u0": 0.98828125, "v0": 0.00390625, "u1": 0.99511719, "v1": 0.01074219 } }
+  }
+}

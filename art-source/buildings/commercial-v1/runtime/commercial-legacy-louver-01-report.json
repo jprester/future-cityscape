@@ -1,0 +1,70 @@
+{
+  "name": "commercial-legacy-louver-01",
+  "bounds": {
+    "min": [
+      -20.0,
+      -16.0,
+      0.0
+    ],
+    "max": [
+      20.0,
+      16.0,
+      142.86000061035156
+    ],
+    "dimensions": [
+      40.0,
+      32.0,
+      142.86000061035156
+    ]
+  },
+  "baseCentered": true,
+  "vertices": 350,
+  "polygons": 164,
+  "triangles": 320,
+  "uvLayers": 1,
+  "materials": 1,
+  "geometryOnly": true,
+  "facade": {
+    "region": "industrial_facade_01",
+    "floorHeight": 3.4,
+    "bayWidth": 2.4,
+    "horizontalAnchor": 0.5
+  },
+  "beacons": [
+    {
+      "name": "roof_beacon",
+      "center": [
+        0,
+        0
+      ],
+      "bottomFloor": 40,
+      "baseOffset": 4.5,
+      "rodHeight": 1.8,
+      "capRadius": 0.28,
+      "rodRegion": "industrial_structural_dark",
+      "capRegion": "industrial_beacon_red"
+    }
+  ],
+  "textureMaps": {
+    "diffuse": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-industrial-v2/atlas/commercial-industrial-v2-diffuse.png",
+    "emissive": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-industrial-v2/atlas/commercial-industrial-v2-emissive.png",
+    "roughness": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-industrial-v2/atlas/commercial-industrial-v2-roughness.png",
+    "normal": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-industrial-v2/atlas/commercial-industrial-v2-normal.png"
+  },
+  "atlasRegions": [
+    "industrial_access_panel",
+    "industrial_beacon_red",
+    "industrial_facade_01",
+    "industrial_hvac_fan",
+    "industrial_hvac_louver",
+    "industrial_roof_dark",
+    "industrial_service_wall",
+    "industrial_structural_dark"
+  ],
+  "outputs": {
+    "blend": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/runtime/commercial-legacy-louver-01.blend",
+    "glb": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/runtime/commercial-legacy-louver-01.glb",
+    "preview": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/runtime/commercial-legacy-louver-01-preview.png",
+    "roofPreview": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/runtime/commercial-legacy-louver-01-roof-preview.png"
+  }
+}

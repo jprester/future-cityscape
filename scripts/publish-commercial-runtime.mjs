@@ -11,10 +11,25 @@ const MODEL_OUTPUT = path.join(
   ROOT,
   "public/assets/models/buildings/commercial-v1",
 );
-const TEXTURE_OUTPUT = path.join(
-  ROOT,
-  "public/assets/textures/buildings/commercial-v1",
-);
+const TEXTURE_PROFILES = [
+  {
+    source: path.join(SOURCE_ROOT, "atlas"),
+    output: path.join(ROOT, "public/assets/textures/buildings/commercial-v1"),
+    prefix: "commercial-atlas-v1",
+  },
+  {
+    source: path.join(
+      ROOT,
+      "art-source/buildings/commercial-industrial-v2/atlas",
+    ),
+    output: path.join(
+      ROOT,
+      "public/assets/textures/buildings/commercial-industrial-v2",
+    ),
+    prefix: "commercial-industrial-v2",
+    runtimeSuffix: "-v3",
+  },
+];
 
 const MODEL_NAMES = [
   "commercial-wide-slab-01",
@@ -25,6 +40,8 @@ const MODEL_NAMES = [
   "commercial-concrete-frame-02",
   "commercial-signature-crown-02",
   "commercial-exoskeleton-02",
+  "commercial-blue-glass-03",
+  "commercial-legacy-louver-01",
 ];
 
 const TEXTURE_MAPS = [
@@ -45,7 +62,6 @@ function runMagick(args) {
 }
 
 mkdirSync(MODEL_OUTPUT, { recursive: true });
-mkdirSync(TEXTURE_OUTPUT, { recursive: true });
 
 for (const name of MODEL_NAMES) {
   copyFileSync(
@@ -54,18 +70,26 @@ for (const name of MODEL_NAMES) {
   );
 }
 
-for (const map of TEXTURE_MAPS) {
-  runMagick([
-    path.join(SOURCE_ROOT, "atlas", `commercial-atlas-v1-${map.name}.png`),
-    "-resize",
-    "2048x2048!",
-    "-define",
-    "webp:method=6",
-    "-quality",
-    String(map.quality),
-    path.join(TEXTURE_OUTPUT, `commercial-atlas-v1-${map.name}.webp`),
-  ]);
+for (const profile of TEXTURE_PROFILES) {
+  mkdirSync(profile.output, { recursive: true });
+  for (const map of TEXTURE_MAPS) {
+    runMagick([
+      path.join(profile.source, `${profile.prefix}-${map.name}.png`),
+      "-resize",
+      "2048x2048!",
+      "-define",
+      "webp:method=6",
+      "-quality",
+      String(map.quality),
+      path.join(
+        profile.output,
+        `${profile.prefix}-${map.name}${profile.runtimeSuffix ?? ""}.webp`,
+      ),
+    ]);
+  }
 }
 
 console.log(`Published ${MODEL_NAMES.length} GLBs to ${MODEL_OUTPUT}`);
-console.log(`Published ${TEXTURE_MAPS.length} shared maps to ${TEXTURE_OUTPUT}`);
+console.log(
+  `Published ${TEXTURE_PROFILES.length * TEXTURE_MAPS.length} shared maps across ${TEXTURE_PROFILES.length} atlas profiles`,
+);

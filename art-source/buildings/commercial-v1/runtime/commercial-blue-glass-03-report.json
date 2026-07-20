@@ -1,0 +1,96 @@
+{
+  "name": "commercial-blue-glass-03",
+  "bounds": {
+    "min": [
+      -21.0,
+      -17.0,
+      0.0
+    ],
+    "max": [
+      21.0,
+      17.0,
+      89.55999755859375
+    ],
+    "dimensions": [
+      42.0,
+      34.0,
+      89.55999755859375
+    ]
+  },
+  "baseCentered": true,
+  "vertices": 346,
+  "polygons": 168,
+  "triangles": 312,
+  "uvLayers": 1,
+  "materials": 1,
+  "geometryOnly": true,
+  "facade": {
+    "region": "facade_01",
+    "floorHeight": 3.4,
+    "bayWidth": 5.5,
+    "horizontalAnchor": 0.5
+  },
+  "beacons": [
+    {
+      "name": "core_beacon",
+      "center": [
+        0,
+        0
+      ],
+      "bottomFloor": 24,
+      "baseOffset": 5.5,
+      "rodHeight": 1.9,
+      "capRadius": 0.28
+    },
+    {
+      "name": "northwest_beacon",
+      "center": [
+        -13,
+        8
+      ],
+      "bottomFloor": 24,
+      "baseOffset": 0.9,
+      "rodHeight": 1.6,
+      "capRadius": 0.25
+    },
+    {
+      "name": "northeast_beacon",
+      "center": [
+        13,
+        8
+      ],
+      "bottomFloor": 24,
+      "baseOffset": 0.9,
+      "rodHeight": 1.6,
+      "capRadius": 0.25
+    }
+  ],
+  "textureMaps": {
+    "diffuse": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-diffuse.png",
+    "emissive": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-emissive.png",
+    "roughness": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-roughness.png",
+    "normal": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/atlas/commercial-atlas-v1-normal.png"
+  },
+  "atlasRegions": [
+    "beacon_red",
+    "beacon_rod_dark",
+    "facade_01",
+    "hvac_access_panel",
+    "hvac_fan_quad",
+    "hvac_louver_wide",
+    "roof_concrete_tile_a",
+    "roof_concrete_tile_b",
+    "roof_dark_metal",
+    "roof_metal_tile_a",
+    "roof_metal_tile_b",
+    "roof_weathered_concrete",
+    "service_wall_clean",
+    "structural_dark"
+  ],
+  "outputs": {
+    "blend": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/runtime/commercial-blue-glass-03.blend",
+    "glb": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/runtime/commercial-blue-glass-03.glb",
+    "preview": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/runtime/commercial-blue-glass-03-preview.png",
+    "roofPreview": "/Users/jankoprester/Projects/software_dev/my_projects/future-cityscape/code/future-cityscape/art-source/buildings/commercial-v1/runtime/commercial-blue-glass-03-roof-preview.png"
+  }
+}

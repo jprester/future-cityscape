@@ -1,5 +1,8 @@
 import type { EmissiveMultipliers, ModelManifestEntry } from "../assets/types";
-import { COMMERCIAL_ATLAS_MATERIAL_KEY } from "./commercialBuildingKit";
+import {
+  COMMERCIAL_ATLAS_MATERIAL_KEY,
+  COMMERCIAL_INDUSTRIAL_MATERIAL_KEY,
+} from "./commercialBuildingKit";
 
 // ============================================================================
 // Types
@@ -413,6 +416,31 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
         format: "glb",
         path: "models/buildings/commercial-v1/commercial-exoskeleton-02.glb",
         materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+    {
+      key: "commercial_24",
+      // Batch 3: 20-floor blue-glass shaft on a mechanical podium.
+      weight: 1,
+      placeable: false,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-blue-glass-03.glb",
+        materialKey: COMMERCIAL_ATLAS_MATERIAL_KEY,
+      },
+    },
+    {
+      key: "commercial_25",
+      // Batch 4: simplified louver tower using the industrial commercial v2
+      // atlas evolved from the legacy SynthCity material language. It joins
+      // the ordinary commercial filler pool rather than behaving as a rare
+      // accent: its compact footprint is suitable for the existing 2x2 block
+      // cells and the local-repeat rule keeps copies from clustering.
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/commercial-v1/commercial-legacy-louver-01.glb",
+        materialKey: COMMERCIAL_INDUSTRIAL_MATERIAL_KEY,
       },
     },
   ],

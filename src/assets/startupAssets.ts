@@ -8,6 +8,8 @@ import {
 import {
   COMMERCIAL_ATLAS_MATERIAL_KEY,
   COMMERCIAL_ATLAS_TEXTURE_KEY_LIST,
+  COMMERCIAL_INDUSTRIAL_MATERIAL_KEY,
+  COMMERCIAL_INDUSTRIAL_TEXTURE_KEY_LIST,
 } from "../config/commercialBuildingKit";
 import {
   SMALL_ADS_META,
@@ -122,6 +124,11 @@ export function getCityStartupAssets(
     materialKeys.add(materialKey);
     if (materialKey === COMMERCIAL_ATLAS_MATERIAL_KEY) {
       for (const textureKey of COMMERCIAL_ATLAS_TEXTURE_KEY_LIST) {
+        textureKeys.add(textureKey);
+      }
+    }
+    if (materialKey === COMMERCIAL_INDUSTRIAL_MATERIAL_KEY) {
+      for (const textureKey of COMMERCIAL_INDUSTRIAL_TEXTURE_KEY_LIST) {
         textureKeys.add(textureKey);
       }
     }

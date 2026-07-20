@@ -18,6 +18,8 @@ import {
 import {
   COMMERCIAL_ATLAS_MATERIAL_KEY,
   COMMERCIAL_ATLAS_TEXTURE_KEYS,
+  COMMERCIAL_INDUSTRIAL_MATERIAL_KEY,
+  COMMERCIAL_INDUSTRIAL_TEXTURE_KEYS,
 } from "../../config/commercialBuildingKit";
 
 type GetTexture = (key: string) => Texture | undefined;
@@ -119,6 +121,23 @@ export function createMaterialFactories(): MaterialFactoryMap {
       normalScale: new Vector2(0.5, 0.5),
       envMap: getTexture("env_night"),
       envMapIntensity: 0.45,
+    });
+
+  // Industrial commercial v2 — a darker louver/service-spine family evolved
+  // from the legacy SynthCity buildings but authored as a modular PBR atlas.
+  factories[COMMERCIAL_INDUSTRIAL_MATERIAL_KEY] = (getTexture, ctx) =>
+    new MeshStandardMaterial({
+      map: getTexture(COMMERCIAL_INDUSTRIAL_TEXTURE_KEYS.diffuse),
+      emissive: 0xffffff,
+      emissiveMap: getTexture(COMMERCIAL_INDUSTRIAL_TEXTURE_KEYS.emissive),
+      emissiveIntensity: ctx.windowLightsEnabled ? 1.45 : 0,
+      roughnessMap: getTexture(COMMERCIAL_INDUSTRIAL_TEXTURE_KEYS.roughness),
+      roughness: 1,
+      metalness: 0.16,
+      normalMap: getTexture(COMMERCIAL_INDUSTRIAL_TEXTURE_KEYS.normal),
+      normalScale: new Vector2(0.42, 0.42),
+      envMap: getTexture("env_night"),
+      envMapIntensity: 0.42,
     });
 
   // Building materials (10 variants with weighted-palette emissive colors)

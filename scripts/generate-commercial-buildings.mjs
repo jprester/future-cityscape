@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
@@ -48,25 +48,74 @@ const pythonScript = path.join(
   ROOT,
   "tools/blender/generate_commercial_building.py",
 );
-const textureArgs = [
-  "--atlas",
-  path.join(SOURCE_ROOT, "atlas/commercial-atlas-v1-diffuse.png"),
-  "--emissive",
-  path.join(SOURCE_ROOT, "atlas/commercial-atlas-v1-emissive.png"),
-  "--roughness",
-  path.join(SOURCE_ROOT, "atlas/commercial-atlas-v1-roughness.png"),
-  "--normal",
-  path.join(SOURCE_ROOT, "atlas/commercial-atlas-v1-normal.png"),
-  "--regions",
-  path.join(SOURCE_ROOT, "atlas/regions.json"),
-  "--output-dir",
-  path.join(SOURCE_ROOT, outputFolder),
-];
+const TEXTURE_PROFILES = {
+  "commercial-v1": {
+    atlas: path.join(SOURCE_ROOT, "atlas/commercial-atlas-v1-diffuse.png"),
+    emissive: path.join(SOURCE_ROOT, "atlas/commercial-atlas-v1-emissive.png"),
+    roughness: path.join(SOURCE_ROOT, "atlas/commercial-atlas-v1-roughness.png"),
+    normal: path.join(SOURCE_ROOT, "atlas/commercial-atlas-v1-normal.png"),
+    regions: path.join(SOURCE_ROOT, "atlas/regions.json"),
+  },
+  "legacy-building-05": {
+    // This profile intentionally points at the already-published shared
+    // building_05 maps. Runtime GLBs therefore add geometry only and do not
+    // duplicate the legacy texture family in startup payload.
+    atlas: path.join(ROOT, "public/assets/textures/buildings/building_05.jpg"),
+    emissive: path.join(ROOT, "public/assets/textures/buildings/building_05_em.jpg"),
+    roughness: path.join(ROOT, "public/assets/textures/buildings/building_05_spec.jpg"),
+    normal: path.join(SOURCE_ROOT, "legacy-building-05/building-05-normal.png"),
+    regions: path.join(SOURCE_ROOT, "legacy-building-05/regions.json"),
+  },
+  "commercial-industrial-v2": {
+    atlas: path.join(
+      ROOT,
+      "art-source/buildings/commercial-industrial-v2/atlas/commercial-industrial-v2-diffuse.png",
+    ),
+    emissive: path.join(
+      ROOT,
+      "art-source/buildings/commercial-industrial-v2/atlas/commercial-industrial-v2-emissive.png",
+    ),
+    roughness: path.join(
+      ROOT,
+      "art-source/buildings/commercial-industrial-v2/atlas/commercial-industrial-v2-roughness.png",
+    ),
+    normal: path.join(
+      ROOT,
+      "art-source/buildings/commercial-industrial-v2/atlas/commercial-industrial-v2-normal.png",
+    ),
+    regions: path.join(
+      ROOT,
+      "art-source/buildings/commercial-industrial-v2/atlas/regions.json",
+    ),
+  },
+};
 
 for (const specArgument of specArguments) {
   const spec = path.isAbsolute(specArgument)
     ? specArgument
     : path.join(SOURCE_ROOT, specArgument);
+  const specDefinition = JSON.parse(readFileSync(spec, "utf8"));
+  const profileName = specDefinition.textureProfile ?? "commercial-v1";
+  const profile = TEXTURE_PROFILES[profileName];
+  if (!profile) {
+    throw new Error(
+      `Unknown texture profile '${profileName}' in ${path.basename(spec)}`,
+    );
+  }
+  const textureArgs = [
+    "--atlas",
+    profile.atlas,
+    "--emissive",
+    profile.emissive,
+    "--roughness",
+    profile.roughness,
+    "--normal",
+    profile.normal,
+    "--regions",
+    profile.regions,
+    "--output-dir",
+    path.join(SOURCE_ROOT, outputFolder),
+  ];
   const args = [
     "--background",
     "--factory-startup",
