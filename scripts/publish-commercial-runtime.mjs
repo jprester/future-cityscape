@@ -16,6 +16,7 @@ const TEXTURE_PROFILES = [
     source: path.join(SOURCE_ROOT, "atlas"),
     output: path.join(ROOT, "public/assets/textures/buildings/commercial-v1"),
     prefix: "commercial-atlas-v1",
+    runtimeSuffix: "-v2",
   },
   {
     source: path.join(
@@ -27,7 +28,7 @@ const TEXTURE_PROFILES = [
       "public/assets/textures/buildings/commercial-industrial-v2",
     ),
     prefix: "commercial-industrial-v2",
-    runtimeSuffix: "-v3",
+    runtimeSuffix: "-v4",
   },
 ];
 

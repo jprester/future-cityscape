@@ -355,6 +355,10 @@ function buildAtlas() {
         "-draw",
         `rectangle ${swatch.pixel.x},${swatch.pixel.y} ${swatch.pixel.x + swatch.pixel.width - 1},${swatch.pixel.y + swatch.pixel.height - 1}`,
       ]),
+      // Slightly lift dark and midtone surfaces for the night renderer while
+      // preserving true black recesses and white/emissive endpoints.
+      "-gamma",
+      "1.08",
       diffuseOutput,
     ]);
 

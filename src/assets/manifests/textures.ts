@@ -98,36 +98,36 @@ export function createTextureManifest(anisotropy: number): TextureManifest {
   };
 
   manifest[COMMERCIAL_ATLAS_TEXTURE_KEYS.diffuse] = {
-    path: "textures/buildings/commercial-v1/commercial-atlas-v1-diffuse.webp",
+    path: "textures/buildings/commercial-v1/commercial-atlas-v1-diffuse-v2.webp",
     options: { colorSpace: SRGBColorSpace, flipY: false, anisotropy },
   };
   manifest[COMMERCIAL_ATLAS_TEXTURE_KEYS.emissive] = {
-    path: "textures/buildings/commercial-v1/commercial-atlas-v1-emissive.webp",
+    path: "textures/buildings/commercial-v1/commercial-atlas-v1-emissive-v2.webp",
     options: { colorSpace: SRGBColorSpace, flipY: false, anisotropy },
   };
   manifest[COMMERCIAL_ATLAS_TEXTURE_KEYS.roughness] = {
-    path: "textures/buildings/commercial-v1/commercial-atlas-v1-roughness.webp",
+    path: "textures/buildings/commercial-v1/commercial-atlas-v1-roughness-v2.webp",
     options: { flipY: false, anisotropy },
   };
   manifest[COMMERCIAL_ATLAS_TEXTURE_KEYS.normal] = {
-    path: "textures/buildings/commercial-v1/commercial-atlas-v1-normal.webp",
+    path: "textures/buildings/commercial-v1/commercial-atlas-v1-normal-v2.webp",
     options: { flipY: false, anisotropy },
   };
 
   manifest[COMMERCIAL_INDUSTRIAL_TEXTURE_KEYS.diffuse] = {
-    path: "textures/buildings/commercial-industrial-v2/commercial-industrial-v2-diffuse-v3.webp",
+    path: "textures/buildings/commercial-industrial-v2/commercial-industrial-v2-diffuse-v4.webp",
     options: { colorSpace: SRGBColorSpace, flipY: false, anisotropy },
   };
   manifest[COMMERCIAL_INDUSTRIAL_TEXTURE_KEYS.emissive] = {
-    path: "textures/buildings/commercial-industrial-v2/commercial-industrial-v2-emissive-v3.webp",
+    path: "textures/buildings/commercial-industrial-v2/commercial-industrial-v2-emissive-v4.webp",
     options: { colorSpace: SRGBColorSpace, flipY: false, anisotropy },
   };
   manifest[COMMERCIAL_INDUSTRIAL_TEXTURE_KEYS.roughness] = {
-    path: "textures/buildings/commercial-industrial-v2/commercial-industrial-v2-roughness-v3.webp",
+    path: "textures/buildings/commercial-industrial-v2/commercial-industrial-v2-roughness-v4.webp",
     options: { flipY: false, anisotropy },
   };
   manifest[COMMERCIAL_INDUSTRIAL_TEXTURE_KEYS.normal] = {
-    path: "textures/buildings/commercial-industrial-v2/commercial-industrial-v2-normal-v3.webp",
+    path: "textures/buildings/commercial-industrial-v2/commercial-industrial-v2-normal-v4.webp",
     options: { flipY: false, anisotropy },
   };
 

@@ -140,6 +140,10 @@ function main() {
     "Gaussian",
     "-draw",
     commands.diffuse.join(" "),
+    // Keep this generated tile consistent with the atlas-wide night-scene
+    // grade applied to commercial-industrial-v2.
+    "-gamma",
+    "1.12",
     DIFFUSE_TILE,
   ]);
   runMagick([
