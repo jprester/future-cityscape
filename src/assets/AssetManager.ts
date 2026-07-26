@@ -13,6 +13,7 @@ import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUti
 
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 
 import type {
   TextureManifest,
@@ -166,11 +167,17 @@ export class AssetManager {
   private terminal: AssetManagerConfig["terminal"];
   private onLoadCallback?: () => void;
 
-  // Loaders
+  // Loaders. The `async*` variants deliberately run WITHOUT the LoadingManager
+  // so a lazy mid-session load doesn't reopen the startup progress bar; they're
+  // fields rather than per-call constructions so the Draco decoder's worker
+  // pool is shared instead of re-spawned for every model.
   private loadingManager: LoadingManager;
   private textureLoader: TextureLoader;
   private objLoader: OBJLoader;
   private gltfLoader: GLTFLoader;
+  private asyncObjLoader: OBJLoader;
+  private asyncGltfLoader: GLTFLoader;
+  private dracoLoader: DRACOLoader;
 
   // Asset storage
   private textures: Map<string, Texture> = new Map();
@@ -221,10 +228,29 @@ export class AssetManager {
       console.error(`AssetManager: Failed to load ${url}`);
     };
 
-    // Initialize loaders
+    // Initialize loaders. Building GLBs are Draco-compressed by
+    // scripts/optimize-assets.mjs; DRACOLoader decodes them off the main thread
+    // and — importantly — hands back float32 attributes, which is why the
+    // pipeline uses Draco rather than meshopt (see that script's header:
+    // meshopt's normalized-integer positions would be destroyed by the
+    // applyMatrix4 bake in extractGeometryFromGLTF/mergeGLTFMeshes).
+    // Uncompressed GLBs load unchanged, so this is safe before the assets are
+    // converted and stays safe for any that are left as-is.
+    // Decoder lives in public/draco/, which is outside the `assets/` basePath
+    // that setPath() installs later — BASE_URL keeps it correct if the app is
+    // ever served from a subdirectory. Left at the default decoder config so
+    // DRACOLoader picks wasm and falls back to JS only where wasm is missing.
+    this.dracoLoader = new DRACOLoader();
+    this.dracoLoader.setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
+    this.dracoLoader.preload();
+
     this.textureLoader = new TextureLoader(this.loadingManager);
     this.objLoader = new OBJLoader(this.loadingManager);
     this.gltfLoader = new GLTFLoader(this.loadingManager);
+    this.gltfLoader.setDRACOLoader(this.dracoLoader);
+    this.asyncObjLoader = new OBJLoader();
+    this.asyncGltfLoader = new GLTFLoader();
+    this.asyncGltfLoader.setDRACOLoader(this.dracoLoader);
   }
 
   /**
@@ -646,8 +672,7 @@ export class AssetManager {
     options?: ModelManifestEntry["options"],
   ): Promise<BufferGeometry | null> {
     return new Promise((resolve) => {
-      const loader = new OBJLoader();
-      loader.load(
+      this.asyncObjLoader.load(
         path,
         (obj) => {
           const geometry = this.extractGeometryFromOBJ(obj, options);
@@ -668,8 +693,7 @@ export class AssetManager {
     modelKey?: string,
   ): Promise<BufferGeometry | null> {
     return new Promise((resolve) => {
-      const loader = new GLTFLoader();
-      loader.load(
+      this.asyncGltfLoader.load(
         path,
         (gltf) => {
           const geometry = this.extractGeometryFromGLTF(
@@ -838,6 +862,10 @@ export class AssetManager {
     this.textures.clear();
     this.models.clear();
     this.materials.clear();
+
+    // Terminates the Draco decoder's worker pool; without this the workers
+    // outlive the AssetManager.
+    this.dracoLoader.dispose();
   }
 }
 

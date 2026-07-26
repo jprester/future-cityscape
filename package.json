@@ -27,6 +27,9 @@
     "publish:commercial-runtime": "node scripts/publish-commercial-runtime.mjs",
     "inspect:commercial-pilot": "node scripts/inspect-glb.mjs art-source/buildings/commercial-v1/pilot/commercial-pilot-01.glb",
     "measure:startup": "node scripts/measure-startup.mjs",
+    "assets:report": "node scripts/asset-report.mjs",
+    "assets:optimize": "node scripts/optimize-assets.mjs",
+    "assets:sync-draco": "cp node_modules/three/examples/jsm/libs/draco/gltf/draco_decoder.wasm node_modules/three/examples/jsm/libs/draco/gltf/draco_decoder.js node_modules/three/examples/jsm/libs/draco/gltf/draco_wasm_wrapper.js public/draco/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
@@ -42,10 +45,16 @@
     "three-mesh-bvh": "^0.9.10"
   },
   "devDependencies": {
+    "@gltf-transform/core": "^4.4.2",
+    "@gltf-transform/extensions": "^4.4.2",
+    "@gltf-transform/functions": "^4.4.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.2",
+    "draco3dgltf": "^1.5.7",
+    "meshoptimizer": "^1.2.0",
     "playwright": "^1.60.0",
+    "sharp": "^0.35.3",
     "typescript": "^5.9.3",
     "vite": "^8.0.14"
   }
