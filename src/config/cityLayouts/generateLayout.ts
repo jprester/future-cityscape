@@ -192,16 +192,16 @@ const CITY_TEMPLATE = `
 .   r   r   r   r   r   r   r   r   r   r   r   r   r   r   r   .
 .   r   r   r   r   r   r   r   r   r   r   r   r   r   r   r   .
 .   r   r   c   c   c   c   m   m   m   m   c   c   c   r   r   .
-.   r   r   m   T01 c   T02 c   c   T03 c   m   S13 m   r   r   .
-.   r   r   m   c   S01 c   S02 r   c   S03 m   m   m   r   r   .
+.   r   r   m   T01 c   T02 c   c   T03 c   m   c m   r   r   .
+.   r   r   m   c   S01 c   S02 S05   c   S03 m   m   m   r   r   .
 .   r   r   m   c   r   r   r   c   r   c   S04 T05 m   r   r   .
-.   r   r   m   S12 S05 c   c   c   c   r   r   m   m   r   r   .
+.   r   r   m   c S10 c   c   c   c   r   r   m   m   r   r   .
 .   r   r   m   c   r   r   c   X   c   c   S06 m   m   r   r   .
-.   r   r   m   c   S08 c   r   c   c   S12   c   T07 m   r   r   .
-.   r   r   m   T08 c   r   c   c   r   c   S14 m   m   r   r   .
-.   r   r   m   c   r c   c   S11 c   S10 m   m   m   r   r   .
-.   r   r   m   T09 c   S15   T10 c   c   T11 m   T12 m   r   r   .
-.   r   r   c   c   r   c   c   r   S09 c   c   c   c   r   r   .
+.   r   r   m   c   S08 c   r   c   c   r   c   T07 m   r   r   .
+.   r   r   m   T08 c   S09   c   c   r   c   c m   m   r   r   .
+.   r   r   m   c   r c   c   S11 c   c m   m   m   r   r   .
+.   r   r   m   T09 c   S12   T10 c   S07   T11 m   T12 m   r   r   .
+.   r   r   c   c   r   c   c   r   c c   c   c   c   r   r   .
 .   r   r   r   r   r   r   r   r   r   r   r   r   r   r   r   .
 .   r   r   r   r   r   r   r   r   r   r   r   r   r   r   r   .
 .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .
@@ -741,9 +741,7 @@ function placeSmallBuildings(
       // neighbour. Models without a footprint (all commercial) get fit = 1, so
       // their placement is unchanged.
       const fp = FOOTPRINTS.get(type);
-      const fit = fp
-        ? Math.min(1, CELL_SLOTS / fp.w, CELL_SLOTS / fp.d)
-        : 1;
+      const fit = fp ? Math.min(1, CELL_SLOTS / fp.w, CELL_SLOTS / fp.d) : 1;
 
       // A light per-instance vertical scale (`scale`) adds height variety. The
       // renderer resolves embedded versus shared materials from the registry.
@@ -796,10 +794,7 @@ function selectSmallBuilding(
     if (!policy) return true;
 
     const count = commercialPlacement.counts.get(variant.key) ?? 0;
-    if (
-      policy.maxInstances !== undefined &&
-      count >= policy.maxInstances
-    ) {
+    if (policy.maxInstances !== undefined && count >= policy.maxInstances) {
       return false;
     }
     return (
@@ -827,10 +822,7 @@ function selectSmallBuilding(
       : policyEligible.length > 0
         ? policyEligible
         : COMMERCIAL_VARIANTS;
-  const variant = pickWeightedFromNoise(
-    candidates,
-    selectionNoise,
-  );
+  const variant = pickWeightedFromNoise(candidates, selectionNoise);
   commercialPlacement.counts.set(
     variant.key,
     (commercialPlacement.counts.get(variant.key) ?? 0) + 1,

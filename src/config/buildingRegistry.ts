@@ -422,7 +422,6 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
       key: "commercial_24",
       // Batch 3: 20-floor blue-glass shaft on a mechanical podium.
       weight: 1,
-      placeable: false,
       source: {
         format: "glb",
         path: "models/buildings/commercial-v1/commercial-blue-glass-03.glb",
@@ -443,6 +442,20 @@ export const COMMERCIAL_SERIES: BuildingSeries = {
         materialKey: COMMERCIAL_INDUSTRIAL_MATERIAL_KEY,
       },
     },
+    // {
+    //   key: "commercial_26",
+    //   // Batch 4: simplified louver tower using the industrial commercial v2
+    //   // atlas evolved from the legacy SynthCity material language. It joins
+    //   // the ordinary commercial filler pool rather than behaving as a rare
+    //   // accent: its compact footprint is suitable for the existing 2x2 block
+    //   // cells and the local-repeat rule keeps copies from clustering.
+    //   weight: 1,
+    //   source: {
+    //     format: "glb",
+    //     path: "models/buildings/commercial/2026-commercial-building-22.glb",
+    //     materialKey: COMMERCIAL_INDUSTRIAL_MATERIAL_KEY,
+    //   },
+    // },
   ],
 };
 
@@ -468,22 +481,13 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       weight: 1,
       source: {
         format: "glb",
-        path: "models/buildings/skyscrapers/cylinder-building.glb",
-        emissiveBase: 1.0,
-      },
-    },
-    {
-      key: "skyscraper_03",
-      weight: 1,
-      source: {
-        format: "glb",
         path: "models/buildings/skyscrapers/dark-skyscraper.glb",
         emissiveBase: 1.0,
         scale: 1,
       },
     },
     {
-      key: "skyscraper_04",
+      key: "skyscraper_03",
       weight: 1,
       source: {
         format: "glb",
@@ -492,7 +496,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       },
     },
     {
-      key: "skyscraper_05",
+      key: "skyscraper_04",
       weight: 1,
       source: {
         format: "glb",
@@ -501,7 +505,7 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       },
     },
     {
-      key: "skyscraper_06",
+      key: "skyscraper_05",
       weight: 1,
       source: {
         format: "glb",
@@ -510,14 +514,25 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       },
     },
     {
+      key: "skyscraper_06",
+      weight: 1,
+      source: {
+        format: "glb",
+        path: "models/buildings/skyscrapers/2026-custom-skyscraper-5.glb",
+        emissiveBase: 1,
+        scale: 1,
+      },
+    },
+    {
       key: "skyscraper_07",
       weight: 1,
       source: {
         format: "glb",
         path: "models/buildings/skyscrapers/ny-office-building.glb",
-        emissiveBase: 1.5,
-        scale: 1.2,
+        emissiveBase: 1.0,
+        scale: 1.1,
       },
+      rotation: { y: Math.PI / 2 },
     },
     {
       key: "skyscraper_08",
@@ -526,8 +541,9 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
         format: "glb",
         path: "models/buildings/skyscrapers/lz-skyscraper-2.glb",
         emissiveBase: 1.0,
-        scale: 1.5,
+        scale: 1.6,
       },
+      // rotation: { y: Math.PI / 1.5 },
     },
     {
       key: "skyscraper_09",
@@ -545,18 +561,18 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
         format: "glb",
         path: "models/buildings/skyscrapers/quality-skyscraper-dual.glb",
         emissiveBase: 1.0,
-        scale: 1.6,
       },
-      rotation: { y: Math.PI * 1.5 },
     },
     {
       key: "skyscraper_11",
       weight: 1,
       source: {
         format: "glb",
-        path: "models/buildings/skyscrapers/quality-skyscraper-thick.glb",
-        emissiveBase: 0.7,
+        path: "models/buildings/skyscrapers/2026-custom-skyscraper-6.glb",
+        emissiveBase: 1.0,
+        scale: 1.2,
       },
+      // rotation: { y: Math.PI / 2 },
     },
     {
       key: "skyscraper_12",
@@ -564,34 +580,8 @@ export const SKYSCRAPER_SERIES: BuildingSeries = {
       source: {
         format: "glb",
         path: "models/buildings/skyscrapers/2026-custom-skyscraper1-bright.glb",
-        emissiveBase: 1.0,
-      },
-    },
-    {
-      key: "skyscraper_13",
-      weight: 1,
-      source: {
-        format: "glb",
-        path: "models/buildings/skyscrapers/cylinder-building.glb",
-        emissiveBase: 1.0,
-      },
-    },
-    {
-      key: "skyscraper_14",
-      weight: 1,
-      source: {
-        format: "glb",
-        path: "models/buildings/skyscrapers/triangular-high-rise.glb",
-        emissiveBase: 1.0,
-      },
-    },
-    {
-      key: "skyscraper_15",
-      weight: 1,
-      source: {
-        format: "glb",
-        path: "models/buildings/skyscrapers/synth-skyscraper.glb",
-        emissiveBase: 1.0,
+        emissiveBase: 0.8,
+        scale: 1.2,
       },
     },
   ],
