@@ -13,7 +13,16 @@ import type { EnvironmentConfig } from "../../config/environments";
 import type { GameRuntime } from "../../types/game";
 import { generateLayout, loadLayoutFromURL } from "../../config/cityLayouts";
 import { getCityStartupAssets } from "../../assets";
-import { EnhancedEffects, getPreset } from "../effects";
+import {
+  EnhancedEffects,
+  getPreset,
+  installHeightFog,
+  setHeightFogParams,
+} from "../effects";
+
+// Patch three's fog shader chunks before any material compiles (module scope
+// runs well before the first render). See scene/effects/HeightFog.ts.
+installHeightFog();
 
 // Dev-only Leva-driven effects wrapper. Excluded from prod (DEV is statically
 // false there, so this lazy branch and Leva are dropped from the bundle).
@@ -148,6 +157,7 @@ export function GameBridge() {
     }
 
     scene.fog = new FogExp2(environment.fog.color, environment.fog.density);
+    setHeightFogParams(environment.fog);
   }, [environment, scene, gameRef]);
 
   useEffect(() => {

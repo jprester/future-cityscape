@@ -14,6 +14,9 @@ export const COLORS = {
   // tint that makes the skyline read as a vast cyberpunk megacity.
   night: {
     fog: 0x1b1838,
+    // Street-level haze tint (height fog): the same indigo family, lifted and
+    // pushed warm/plum — light pollution glowing in the thick low air.
+    fogGround: 0x3b2544,
     sun: 0x8b79ff,
     ambient: 0x1c384a,
   },

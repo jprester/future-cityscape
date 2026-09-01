@@ -6,6 +6,7 @@ import {
   SphereGeometry,
   Matrix4,
   LinearFilter,
+  LinearMipmapLinearFilter,
   Color,
 } from "three";
 import type { Texture, Material, BufferGeometry, Group, Mesh } from "three";
@@ -615,11 +616,17 @@ export class AssetManager {
         // by the category multiplier from BASE_EMISSIVE_INTENSITIES
         mat.emissiveIntensity = 1.0;
 
-        // Disable mipmaps on emissive maps for crisp window lights at distance
-        // (mipmaps blur small bright details like window emissions)
-        mat.emissiveMap.generateMipmaps = false;
-        mat.emissiveMap.minFilter = LinearFilter;
+        // Trilinear + anisotropic filtering on the emissive (window) maps.
+        // Mipmaps used to be disabled here to keep distant windows "crisp", but
+        // an unfiltered high-frequency window grid minified far below texel
+        // size aliases into a speckled, crawling moiré on every distant tower.
+        // A camera sees distant windows as a soft glow; mipmaps give exactly
+        // that, and anisotropy keeps facades seen at grazing angles (the
+        // common case from the rooftop) sharp instead of smeared.
+        mat.emissiveMap.generateMipmaps = true;
+        mat.emissiveMap.minFilter = LinearMipmapLinearFilter;
         mat.emissiveMap.magFilter = LinearFilter;
+        mat.emissiveMap.anisotropy = this.textureAnisotropy;
         mat.emissiveMap.needsUpdate = true;
 
         // Per-instance emissive variation when this material is instanced
@@ -638,6 +645,7 @@ export class AssetManager {
         "roughnessMap",
         "metalnessMap",
         "aoMap",
+        "emissiveMap",
       ]) {
         const tex = mat[key];
         if (tex) tex.anisotropy = this.textureAnisotropy;

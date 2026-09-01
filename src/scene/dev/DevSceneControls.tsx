@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useControls, folder } from "leva";
 import { Color, type AmbientLight, type DirectionalLight, FogExp2 } from "three";
 import { ENVIRONMENT_NIGHT } from "../../config/environments";
+import { setHeightFogParams } from "../effects";
 import { useGameStore } from "../../context/GameContext";
 import type { VisibilitySettings } from "../../types/settings";
 
@@ -104,6 +105,20 @@ export default function DevSceneControls() {
         max: 0.01,
         step: 0.0001,
       },
+      // Height fog (scene/effects/HeightFog.ts) — street-level haze layer.
+      fogGroundColor: toHex(ENVIRONMENT_NIGHT.fog.groundColor),
+      fogHeightFalloff: {
+        value: ENVIRONMENT_NIGHT.fog.heightFalloff,
+        min: 10,
+        max: 400,
+        step: 1,
+      },
+      fogHeightBoost: {
+        value: ENVIRONMENT_NIGHT.fog.heightBoost,
+        min: 0,
+        max: 8,
+        step: 0.05,
+      },
     }),
   });
 
@@ -145,6 +160,11 @@ export default function DevSceneControls() {
       scene.fog.color.copy(tmpColor.current.set(values.fogColor));
       scene.fog.density = values.fogDensity;
     }
+    setHeightFogParams({
+      groundColor: values.fogGroundColor,
+      heightFalloff: values.fogHeightFalloff,
+      heightBoost: values.fogHeightBoost,
+    });
   });
 
   return null;

@@ -1,5 +1,10 @@
 export { EnhancedEffects } from "./EnhancedEffects";
 export {
+  installHeightFog,
+  setHeightFogParams,
+  type HeightFogParams,
+} from "./HeightFog";
+export {
   VISUAL_PRESETS,
   PRESET_NAMES,
   PRESET_DEFAULT,

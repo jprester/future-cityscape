@@ -36,7 +36,17 @@ export type EnvironmentConfig = {
   backgroundIntensity: number;
   fog: {
     color: number;
+    /** Base (high-altitude) exp2 density. */
     density: number;
+    /**
+     * Height fog (see scene/effects/HeightFog.ts): the fog gets `heightBoost`×
+     * denser at street level, decaying by 1/e every `heightFalloff` units of
+     * altitude, and blends toward `groundColor` where the ground layer
+     * dominates. heightBoost = 0 reproduces plain FogExp2.
+     */
+    groundColor: number;
+    heightFalloff: number;
+    heightBoost: number;
   };
   sun: {
     color: number;
@@ -69,6 +79,13 @@ export const ENVIRONMENT_NIGHT: EnvironmentConfig = {
     // skyline read as a vast megacity (see the cyberpunk reference).
     color: COLORS.night.fog,
     density: 0.0008,
+    // Street-level haze: ~3.5× the base density at the ground, gone by roughly
+    // tower-top height (falloff 90 u ≈ 56 m; the rooftop vantage sits at
+    // ~205 u where the layer is down to ~10%). Tinted toward the warm plum of
+    // light pollution so canyons glow instead of going black.
+    groundColor: COLORS.night.fogGround,
+    heightFalloff: 90,
+    heightBoost: 2.5,
   },
   sun: {
     color: COLORS.night.sun,
@@ -97,6 +114,9 @@ export const ENVIRONMENT_DAY: EnvironmentConfig = {
   fog: {
     color: COLORS.day.fog,
     density: 0.00035,
+    groundColor: COLORS.day.fog,
+    heightFalloff: 120,
+    heightBoost: 0, // plain FogExp2 by day
   },
   sun: {
     color: COLORS.day.sun,
